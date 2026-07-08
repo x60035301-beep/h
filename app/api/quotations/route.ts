@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
 import { serializeQuotationItemNotes } from "@/lib/quotation-item-meta";
+import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
 import { makeQuotationNo } from "@/lib/utils";
 import { quotationSchema } from "@/lib/validations";
 
@@ -21,7 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const payload = quotationSchema.parse(await request.json());
-    const total = payload.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+    const total = payload.items.reduce((sum, item) => sum + getLineAmount(item), 0);
     const context = await getApiContext();
     if (isApiError(context)) return context;
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       product_name: item.product_name,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      amount: item.quantity * item.unit_price,
+      amount: getLineAmount(item),
       notes: serializeQuotationItemNotes({
         density: item.density,
         specification: item.specification,
@@ -74,4 +75,12 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function getLineAmount(item: { unit_price: number; size?: string | null; quantity: number }) {
+  return calculateFoamLineAmount({
+    unitPrice: item.unit_price,
+    size: item.size,
+    quantity: item.quantity
+  })?.amount ?? 0;
 }

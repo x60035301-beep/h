@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
@@ -22,7 +22,7 @@ import { toast } from "@/hooks/use-toast";
 import { currencies, getCurrencyName } from "@/lib/currencies";
 import { getDictionary } from "@/lib/dictionaries";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
-import { calculateDensityUnitPrice, type DensityPriceResult } from "@/lib/quotation-pricing";
+import { calculateFoamLineAmount, type FoamLineCalculation } from "@/lib/quotation-pricing";
 import { formatCurrency } from "@/lib/utils";
 import { quotationSchema, type QuotationInput } from "@/lib/validations";
 import type { CustomerSummary, Locale, Product, Quotation, QuotationItem } from "@/types/crm";
@@ -57,8 +57,7 @@ const formCopy = {
     productName: "产品名称",
     itemNumber: "明细",
     pricingBasis: "报价方式",
-    densityPricing: "密度报价",
-    specificationPricing: "规格报价",
+    densityPricing: "密度",
     density: "密度",
     specification: "规格",
     size: "尺寸",
@@ -92,8 +91,7 @@ const formCopy = {
     productName: "Product name",
     itemNumber: "Item",
     pricingBasis: "Quote basis",
-    densityPricing: "Density price",
-    specificationPricing: "Specification price",
+    densityPricing: "Density",
     density: "Density",
     specification: "Specification",
     size: "Size",
@@ -127,8 +125,7 @@ const formCopy = {
     productName: "Nama produk",
     itemNumber: "Item",
     pricingBasis: "Dasar harga",
-    densityPricing: "Harga density",
-    specificationPricing: "Harga spesifikasi",
+    densityPricing: "Density",
     density: "Density",
     specification: "Spesifikasi",
     size: "Ukuran",
@@ -180,27 +177,27 @@ const modeCopy = {
 const calculationCopy = {
   zh: {
     auto: "自动核算",
-    densityBasis: "密度表价",
+    densityBasis: "单价",
     volume: "体积",
-    factor: "损耗系数",
+    factor: "数量",
     productBasis: "规格/产品价格",
-    waiting: "填写密度和尺寸后自动核算单价"
+    waiting: "填写尺寸、数量和单价后自动核算金额"
   },
   en: {
     auto: "Auto calculation",
-    densityBasis: "Density table",
+    densityBasis: "Unit price",
     volume: "Volume",
-    factor: "waste factor",
+    factor: "Qty",
     productBasis: "Spec/product price",
-    waiting: "Enter density and size to auto-calculate unit price"
+    waiting: "Enter size, quantity, and unit price to calculate amount"
   },
   id: {
     auto: "Kalkulasi otomatis",
-    densityBasis: "Harga density",
+    densityBasis: "Harga satuan",
     volume: "Volume",
-    factor: "faktor waste",
+    factor: "Qty",
     productBasis: "Harga spek/produk",
-    waiting: "Isi density dan ukuran untuk hitung harga otomatis"
+    waiting: "Isi ukuran, qty, dan harga satuan untuk hitung jumlah"
   }
 } as const;
 
@@ -232,7 +229,6 @@ export function QuotationForm({
   const modeText = modeCopy[locale];
   const dictionary = getDictionary(locale);
   const isEdit = mode === "edit" && Boolean(quotation);
-  const lastAutoPricesRef = useRef<Record<number, number>>({});
   const densityOptions = useMemo(
     () =>
       uniqueOptions([
@@ -298,39 +294,25 @@ export function QuotationForm({
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
   const watchedItems = form.watch("items");
   const currency = form.watch("currency");
-  const total = useMemo(() => watchedItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0), [watchedItems]);
+  const total = useMemo(
+    () =>
+      watchedItems.reduce(
+        (sum, item) =>
+          sum +
+          (calculateFoamLineAmount({
+            unitPrice: Number(item.unit_price || 0),
+            size: item.size,
+            quantity: Number(item.quantity || 0)
+          })?.amount ?? 0),
+        0
+      ),
+    [watchedItems]
+  );
 
   useEffect(() => {
     form.reset(defaultValues);
     setAdvice(null);
   }, [defaultValues, form]);
-
-  useEffect(() => {
-    watchedItems.forEach((item, index) => {
-      const densityPrice = calculateDensityUnitPrice({
-        density: item.density,
-        size: item.size,
-        currency
-      });
-      const autoPrice = densityPrice?.unitPrice;
-      if (autoPrice === null || autoPrice === undefined || !Number.isFinite(autoPrice)) return;
-
-      const currentPrice = Number(item.unit_price || 0);
-      const previousAutoPrice = lastAutoPricesRef.current[index];
-      const currentPriceWasAuto =
-        previousAutoPrice !== undefined && Math.abs(currentPrice - previousAutoPrice) < 0.01;
-      const shouldApply = Boolean(densityPrice) || currentPrice === 0 || currentPriceWasAuto;
-
-      if (shouldApply && Math.abs(currentPrice - autoPrice) >= 0.01) {
-        form.setValue(`items.${index}.unit_price`, autoPrice, {
-          shouldDirty: true,
-          shouldValidate: true
-        });
-      }
-
-      lastAutoPricesRef.current[index] = autoPrice;
-    });
-  }, [currency, form, watchedItems]);
 
   async function onSubmit(values: QuotationInput) {
     let documentWindow: Window | null = null;
@@ -489,14 +471,14 @@ export function QuotationForm({
         </datalist>
         {fields.map((field, index) => {
           const item = watchedItems[index];
-          const densityPrice = calculateDensityUnitPrice({
-            density: item?.density,
+          const calculation = calculateFoamLineAmount({
+            unitPrice: Number(item?.unit_price || 0),
             size: item?.size,
-            currency
+            quantity: Number(item?.quantity || 0)
           });
-          const amount = Number(item?.quantity || 0) * Number(item?.unit_price || 0);
-          const pricingHint = densityPrice
-            ? formatDensityCalculationHint(densityPrice, currency, calculationText)
+          const amount = calculation?.amount ?? 0;
+          const pricingHint = calculation
+            ? formatDensityCalculationHint(calculation, currency, calculationText)
             : calculationText.waiting;
 
           return (
@@ -506,9 +488,7 @@ export function QuotationForm({
                   <p className="font-medium">
                     {copy.itemNumber} #{index + 1}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {copy.pricingBasis}: {copy.densityPricing} / {copy.specificationPricing}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{copy.pricingBasis}: {copy.densityPricing}</p>
                 </div>
                 <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
                   <Trash2 />
@@ -520,14 +500,10 @@ export function QuotationForm({
                 <Input {...form.register(`items.${index}.product_name`)} placeholder={copy.productName} />
               </div>
 
-              <div className="grid gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 md:grid-cols-3 lg:col-span-12">
+              <div className="grid gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 md:grid-cols-2 lg:col-span-12">
                 <div className="grid gap-1">
                   <Label className="text-xs font-medium text-primary">{copy.densityPricing}</Label>
                   <Input list="quotation-density-options" {...form.register(`items.${index}.density`)} placeholder="18D / 20D / 22D" />
-                </div>
-                <div className="grid gap-1">
-                  <Label className="text-xs font-medium text-primary">{copy.specificationPricing}</Label>
-                  <Input {...form.register(`items.${index}.specification`)} placeholder={copy.specification} />
                 </div>
                 <div className="grid gap-1">
                   <Label className="text-xs font-medium text-primary">{copy.size}</Label>
@@ -618,18 +594,15 @@ export function QuotationForm({
 }
 
 function formatDensityCalculationHint(
-  result: DensityPriceResult,
+  result: FoamLineCalculation,
   currency: string,
   text: (typeof calculationCopy)[Locale]
 ) {
   const cubicMeters = result.size.cubicMeters.toFixed(4);
   return `${text.auto}: ${text.densityBasis} ${formatCurrency(
-    result.basePriceIdrPerCubic,
-    "IDR"
-  )}/m3 x ${text.volume} ${cubicMeters}m3 x ${text.factor} ${result.processingFactor} = ${formatCurrency(
     result.unitPrice,
     currency
-  )}`;
+  )}/m3 x ${text.volume} ${cubicMeters}m3 x ${text.factor} ${result.quantity} = ${formatCurrency(result.amount, currency)}`;
 }
 
 function uniqueOptions(values: Array<string | null | undefined>) {
