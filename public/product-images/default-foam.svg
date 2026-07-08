@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" role="img" aria-label="foam sheet">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="foam" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#93c5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="240" fill="url(#bg)"/>
+  <path d="M68 86h176l44 38-176 38-44-38z" fill="url(#foam)" stroke="#60a5fa" stroke-width="3"/>
+  <path d="M68 124v42l44 42v-46z" fill="#bfdbfe" stroke="#60a5fa" stroke-width="3"/>
+  <path d="M112 162l176-38v42l-176 42z" fill="#dbeafe" stroke="#60a5fa" stroke-width="3"/>
+  <g fill="#2563eb" opacity=".14">
+    <circle cx="98" cy="118" r="5"/>
+    <circle cx="132" cy="110" r="5"/>
+    <circle cx="166" cy="103" r="5"/>
+    <circle cx="200" cy="96" r="5"/>
+    <circle cx="236" cy="119" r="5"/>
+    <circle cx="186" cy="130" r="5"/>
+    <circle cx="140" cy="140" r="5"/>
+  </g>
+</svg>

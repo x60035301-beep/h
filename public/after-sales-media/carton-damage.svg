@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="carton damage">
+  <rect width="640" height="360" fill="#f8fafc"/>
+  <rect x="76" y="76" width="420" height="210" rx="10" fill="#fed7aa" stroke="#fb923c" stroke-width="4"/>
+  <path d="M76 128h420M212 76v210" stroke="#fb923c" stroke-width="3" opacity=".55"/>
+  <path d="M424 76l72 52v158l-72-44z" fill="#fdba74" stroke="#fb923c" stroke-width="4"/>
+  <path d="M470 84l-38 40 48 12-36 34 46-4-30 44" fill="none" stroke="#b91c1c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="112" y="166" width="148" height="54" rx="6" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="132" y="199" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#9a3412">DAMAGED</text>
+  <circle cx="522" cy="104" r="18" fill="#ef4444"/>
+  <path d="M514 104h16M522 96v16" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" role="img" aria-label="industrial foam panel">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="240" fill="url(#bg)"/>
+  <rect x="58" y="54" width="204" height="132" rx="12" fill="#111827"/>
+  <g fill="#374151">
+    <path d="M72 78h176v18H72z"/>
+    <path d="M72 118h176v18H72z"/>
+    <path d="M72 158h176v18H72z"/>
+  </g>
+  <g fill="#f9fafb">
+    <path d="M84 74l16 26H68z"/>
+    <path d="M124 74l16 26h-32z"/>
+    <path d="M164 74l16 26h-32z"/>
+    <path d="M204 74l16 26h-32z"/>
+    <path d="M244 74l16 26h-32z"/>
+    <path d="M104 114l16 26H88z"/>
+    <path d="M144 114l16 26h-32z"/>
+    <path d="M184 114l16 26h-32z"/>
+    <path d="M224 114l16 26h-32z"/>
+    <path d="M84 154l16 26H68z"/>
+    <path d="M124 154l16 26h-32z"/>
+    <path d="M164 154l16 26h-32z"/>
+    <path d="M204 154l16 26h-32z"/>
+    <path d="M244 154l16 26h-32z"/>
+  </g>
+</svg>

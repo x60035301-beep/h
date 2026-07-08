@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="replacement carton">
+  <rect width="640" height="360" fill="#f8fafc"/>
+  <path d="M130 106h240l76 52-238 58-78-54z" fill="#fde68a" stroke="#f59e0b" stroke-width="4"/>
+  <path d="M130 162v102l78 56V216z" fill="#fcd34d" stroke="#f59e0b" stroke-width="4"/>
+  <path d="M208 216l238-58v102l-238 60z" fill="#fef3c7" stroke="#f59e0b" stroke-width="4"/>
+  <path d="M168 198l48 34M250 206l100-24M250 238l132-32" stroke="#d97706" stroke-width="5" stroke-linecap="round" opacity=".6"/>
+  <circle cx="476" cy="102" r="40" fill="#dbeafe" stroke="#3b82f6" stroke-width="4"/>
+  <path d="M456 104h38l-14-14M494 104l-14 14" fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="132" y="72" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#92400e">REPLACEMENT READY</text>
+</svg>

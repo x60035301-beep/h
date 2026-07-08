@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="density test">
+  <rect width="640" height="360" fill="#f8fafc"/>
+  <rect x="86" y="100" width="230" height="120" rx="18" fill="#dbeafe" stroke="#3b82f6" stroke-width="4"/>
+  <circle cx="420" cy="166" r="78" fill="#fff" stroke="#94a3b8" stroke-width="6"/>
+  <path d="M420 166l44-48" stroke="#ef4444" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="420" cy="166" r="8" fill="#ef4444"/>
+  <path d="M372 166h-18M486 166h-18M420 118v-18M420 232v-18" stroke="#64748b" stroke-width="5" stroke-linecap="round"/>
+  <text x="374" y="274" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#1e40af">45D</text>
+  <text x="104" y="168" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#1d4ed8">FOAM SAMPLE</text>
+  <text x="104" y="198" font-family="Arial, sans-serif" font-size="18" fill="#475569">Density check</text>
+</svg>

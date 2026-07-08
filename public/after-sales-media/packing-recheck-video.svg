@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="packing recheck video">
+  <rect width="640" height="360" fill="#0f172a"/>
+  <rect x="78" y="58" width="484" height="244" rx="18" fill="#1e293b"/>
+  <rect x="118" y="96" width="220" height="150" rx="12" fill="#fed7aa" stroke="#fb923c" stroke-width="4"/>
+  <path d="M118 136h220M190 96v150" stroke="#fb923c" stroke-width="3" opacity=".6"/>
+  <rect x="372" y="108" width="118" height="92" rx="10" fill="#334155"/>
+  <path d="M392 154h78M410 134h42M410 174h42" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="320" cy="180" r="52" fill="#2563eb" opacity=".92"/>
+  <path d="M306 154l48 26-48 26z" fill="#fff"/>
+  <text x="118" y="274" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#e2e8f0">PACKING RECHECK · 00:42</text>
+</svg>
