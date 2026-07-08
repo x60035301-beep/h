@@ -29,6 +29,7 @@ const quotationListCopy = {
     edit: "编辑报价",
     editTitle: "编辑报价单",
     editDescription: "更新客户、状态、币种、有效期和产品明细。",
+    generateDocument: "生成报价单",
     loadFailed: "读取报价失败",
     loading: "正在读取报价明细..."
   },
@@ -36,6 +37,7 @@ const quotationListCopy = {
     edit: "Edit quotation",
     editTitle: "Edit quotation",
     editDescription: "Update customer, status, currency, validity, and line items.",
+    generateDocument: "Generate quotation",
     loadFailed: "Failed to load quotation",
     loading: "Loading quotation details..."
   },
@@ -43,6 +45,7 @@ const quotationListCopy = {
     edit: "Edit quotation",
     editTitle: "Edit quotation",
     editDescription: "Update pelanggan, status, mata uang, masa berlaku, dan item produk.",
+    generateDocument: "Buat PDF quotation",
     loadFailed: "Gagal memuat quotation",
     loading: "Memuat detail quotation..."
   }
@@ -174,16 +177,17 @@ export function QuotationList({
                   <TableCell>{quotation.valid_until ?? "-"}</TableCell>
                   <TableCell>{formatDate(quotation.created_at, "yyyy-MM-dd HH:mm", locale)}</TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="icon" onClick={() => openEditQuotation(quotation)} aria-label={listCopy.edit}>
                         <Pencil />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => copyQuotation(quotation.id)} aria-label={copy.copy}>
                         <Copy />
                       </Button>
-                      <Button asChild variant="ghost" size="icon" aria-label={copy.downloadPdf}>
-                        <Link href={`/api/quotations/${quotation.id}/pdf`} target="_blank">
+                      <Button asChild variant="outline" size="sm" aria-label={listCopy.generateDocument}>
+                        <Link href={`/api/quotations/${quotation.id}/pdf`} target="_blank" rel="noreferrer">
                           <Download />
+                          {listCopy.generateDocument}
                         </Link>
                       </Button>
                     </div>
