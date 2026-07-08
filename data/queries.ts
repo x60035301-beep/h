@@ -173,6 +173,21 @@ export async function getQuotations(): Promise<Quotation[]> {
   return (data ?? []) as Quotation[];
 }
 
+export async function getQuotationItems(quotationIds: string[]): Promise<QuotationItem[]> {
+  const supabase = await createClient();
+  if (!supabase || quotationIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("quotation_items")
+    .select("*")
+    .in("quotation_id", quotationIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as QuotationItem[];
+}
+
 export async function getScripts(): Promise<Script[]> {
   const supabase = await createClient();
   if (!supabase) return [];

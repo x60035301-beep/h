@@ -7,11 +7,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { aiCrmCopy, productionOrders, text } from "@/data/ai-crm";
-import { getCustomers, getQuotations } from "@/data/queries";
+import { getCustomers, getQuotationItems, getQuotations } from "@/data/queries";
 import { defaultLocale, isLocale } from "@/lib/i18n";
 import { findOrderRecord, type CrmOrderRecord } from "@/lib/order-records";
-import { formatCurrency } from "@/lib/utils";
+import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 const labels = {
   zh: {
@@ -97,6 +99,93 @@ const labels = {
   }
 } as const;
 
+const quotationDetailLabels = {
+  zh: {
+    title: "报价单完整数据",
+    description: "订单创建后保留原报价中的产品、密度、规格、数量、单价、金额和备注，方便生产、开票和收款核对。",
+    openPdf: "查看报价单",
+    quotationNo: "报价单号",
+    customer: "客户",
+    createdAt: "创建时间",
+    validUntil: "有效期",
+    status: "报价状态",
+    amount: "报价总额",
+    product: "产品",
+    density: "密度",
+    specification: "规格",
+    size: "尺寸",
+    quantity: "数量",
+    unitPrice: "单价",
+    lineAmount: "金额",
+    remarks: "备注",
+    noItems: "该报价单暂无产品明细。"
+  },
+  en: {
+    title: "Full quotation data",
+    description: "The order keeps the original quotation products, density, specifications, quantities, unit prices, amounts, and notes for production, invoicing, and payment checks.",
+    openPdf: "Open quotation",
+    quotationNo: "Quotation no.",
+    customer: "Customer",
+    createdAt: "Created at",
+    validUntil: "Valid until",
+    status: "Quotation status",
+    amount: "Quotation total",
+    product: "Product",
+    density: "Density",
+    specification: "Specification",
+    size: "Size",
+    quantity: "Qty.",
+    unitPrice: "Unit price",
+    lineAmount: "Amount",
+    remarks: "Notes",
+    noItems: "No line items found for this quotation."
+  },
+  id: {
+    title: "Data quotation lengkap",
+    description: "Order menyimpan produk, density, spesifikasi, quantity, harga satuan, jumlah, dan catatan dari quotation asli untuk cek produksi, invoice, dan pembayaran.",
+    openPdf: "Buka quotation",
+    quotationNo: "No. quotation",
+    customer: "Pelanggan",
+    createdAt: "Dibuat",
+    validUntil: "Berlaku sampai",
+    status: "Status quotation",
+    amount: "Total quotation",
+    product: "Produk",
+    density: "Density",
+    specification: "Spesifikasi",
+    size: "Ukuran",
+    quantity: "Qty.",
+    unitPrice: "Harga satuan",
+    lineAmount: "Jumlah",
+    remarks: "Catatan",
+    noItems: "Belum ada item untuk quotation ini."
+  }
+} as const;
+
+const quotationStatusLabels = {
+  zh: {
+    draft: "草稿",
+    sent: "已发送",
+    accepted: "已接受",
+    rejected: "已拒绝",
+    expired: "已过期"
+  },
+  en: {
+    draft: "Draft",
+    sent: "Sent",
+    accepted: "Accepted",
+    rejected: "Rejected",
+    expired: "Expired"
+  },
+  id: {
+    draft: "Draft",
+    sent: "Terkirim",
+    accepted: "Diterima",
+    rejected: "Ditolak",
+    expired: "Kedaluwarsa"
+  }
+} as const;
+
 export default async function OrderDetailPage({
   params
 }: {
@@ -110,6 +199,9 @@ export default async function OrderDetailPage({
   const [quotations, customers] = await Promise.all([getQuotations(), getCustomers()]);
   const order = findOrderRecord(orderId, quotations, customers);
   if (!order) notFound();
+  const quotation = quotations.find((item) => item.id === order.quotationId);
+  const quotationItems = await getQuotationItems([order.quotationId]);
+  const quoteText = quotationDetailLabels[locale];
   const production = productionOrders.find((item) => item.customer === order.customer);
   const stageDetails = buildStageDetails(order, locale, production?.order);
 
@@ -141,6 +233,71 @@ export default async function OrderDetailPage({
         <Summary label={page.quotation} value={order.quotation} />
         <Summary label={copy.common.progress} value={`${order.progress}%`} />
       </section>
+
+      <Card id="quotation-data" className="scroll-mt-24">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>{quoteText.title}</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{quoteText.description}</p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/api/quotations/${order.quotationId}/pdf`} target="_blank" rel="noreferrer">
+                <FileText className="size-4" />
+                {quoteText.openPdf}
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {quotation ? (
+            <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-6">
+              <SummaryValue label={quoteText.quotationNo} value={quotation.quotation_no} />
+              <SummaryValue label={quoteText.customer} value={order.customer} />
+              <SummaryValue label={quoteText.createdAt} value={formatDate(quotation.created_at, "yyyy-MM-dd HH:mm", locale)} />
+              <SummaryValue label={quoteText.validUntil} value={formatDate(quotation.valid_until, "yyyy-MM-dd", locale)} />
+              <SummaryValue label={quoteText.status} value={formatQuotationStatus(quotation.status, locale)} />
+              <SummaryValue label={quoteText.amount} value={formatCurrency(Number(quotation.total_amount ?? 0), quotation.currency)} />
+            </div>
+          ) : null}
+
+          {quotationItems.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[180px]">{quoteText.product}</TableHead>
+                  <TableHead>{quoteText.density}</TableHead>
+                  <TableHead className="min-w-[160px]">{quoteText.specification}</TableHead>
+                  <TableHead className="min-w-[120px]">{quoteText.size}</TableHead>
+                  <TableHead className="text-right">{quoteText.quantity}</TableHead>
+                  <TableHead className="text-right">{quoteText.unitPrice}</TableHead>
+                  <TableHead className="text-right">{quoteText.lineAmount}</TableHead>
+                  <TableHead className="min-w-[160px]">{quoteText.remarks}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotationItems.map((item) => {
+                  const meta = parseQuotationItemNotes(item.notes);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.product_name}</TableCell>
+                      <TableCell>{displayValue(item.density ?? meta.density)}</TableCell>
+                      <TableCell>{displayValue(item.specification ?? meta.specification)}</TableCell>
+                      <TableCell>{displayValue(item.size ?? meta.size)}</TableCell>
+                      <TableCell className="text-right">{formatQuantity(item.quantity)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(item.unit_price ?? 0), order.currency)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(Number(item.amount ?? 0), order.currency)}</TableCell>
+                      <TableCell className="text-muted-foreground">{displayValue(meta.note)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{quoteText.noItems}</div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -455,6 +612,15 @@ function Summary({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium">{value}</p>
+    </div>
+  );
+}
+
 function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border p-3">
@@ -465,4 +631,18 @@ function Info({ icon, label, value }: { icon: React.ReactNode; label: string; va
       <span className="text-right font-medium">{value}</span>
     </div>
   );
+}
+
+function displayValue(value: string | null | undefined) {
+  return value && value.trim().length > 0 ? value : "-";
+}
+
+function formatQuantity(value: number) {
+  return Number(value ?? 0).toLocaleString("en-US", {
+    maximumFractionDigits: 3
+  });
+}
+
+function formatQuotationStatus(status: string, locale: keyof typeof quotationStatusLabels) {
+  return quotationStatusLabels[locale][status as keyof (typeof quotationStatusLabels)[typeof locale]] ?? status;
 }

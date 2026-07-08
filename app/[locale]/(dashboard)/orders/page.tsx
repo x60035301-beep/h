@@ -8,7 +8,7 @@ import { OrderCreateDialog } from "@/components/orders/order-create-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { aiCrmCopy, text } from "@/data/ai-crm";
-import { getCustomers, getQuotations } from "@/data/queries";
+import { getCustomers, getQuotationItems, getQuotations } from "@/data/queries";
 import { defaultLocale, isLocale } from "@/lib/i18n";
 import { buildOrderRecords } from "@/lib/order-records";
 import { formatCurrency } from "@/lib/utils";
@@ -25,6 +25,7 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
   const copy = aiCrmCopy[locale];
   const page = labels[locale];
   const [quotations, customers] = await Promise.all([getQuotations(), getCustomers()]);
+  const quotationItems = await getQuotationItems(quotations.map((quotation) => quotation.id));
   const orderRecords = buildOrderRecords(quotations, customers);
   const creatableQuotations = quotations.filter((quotation) => quotation.status !== "rejected" && quotation.status !== "expired");
 
@@ -33,7 +34,7 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
       <PageHeader
         title={copy.pages.orders.title}
         description={copy.pages.orders.description}
-        actions={<OrderCreateDialog locale={locale} quotations={creatableQuotations} customers={customers} />}
+        actions={<OrderCreateDialog locale={locale} quotations={creatableQuotations} quotationItems={quotationItems} customers={customers} />}
       />
 
       {!orderRecords.length ? <EmptyState icon={ClipboardList} title={page.empty} description={page.emptyDescription} /> : null}
