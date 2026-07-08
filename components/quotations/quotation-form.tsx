@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
@@ -22,6 +22,7 @@ import { toast } from "@/hooks/use-toast";
 import { currencies, getCurrencyName } from "@/lib/currencies";
 import { getDictionary } from "@/lib/dictionaries";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
+import { calculateDensityUnitPrice, type DensityPriceResult } from "@/lib/quotation-pricing";
 import { formatCurrency } from "@/lib/utils";
 import { quotationSchema, type QuotationInput } from "@/lib/validations";
 import type { CustomerSummary, Locale, Product, Quotation, QuotationItem } from "@/types/crm";
@@ -176,6 +177,33 @@ const modeCopy = {
   }
 } as const;
 
+const calculationCopy = {
+  zh: {
+    auto: "自动核算",
+    densityBasis: "密度表价",
+    volume: "体积",
+    factor: "损耗系数",
+    productBasis: "规格/产品价格",
+    waiting: "填写密度和尺寸后自动核算单价"
+  },
+  en: {
+    auto: "Auto calculation",
+    densityBasis: "Density table",
+    volume: "Volume",
+    factor: "waste factor",
+    productBasis: "Spec/product price",
+    waiting: "Enter density and size to auto-calculate unit price"
+  },
+  id: {
+    auto: "Kalkulasi otomatis",
+    densityBasis: "Harga density",
+    volume: "Volume",
+    factor: "faktor waste",
+    productBasis: "Harga spek/produk",
+    waiting: "Isi density dan ukuran untuk hitung harga otomatis"
+  }
+} as const;
+
 const emptyQuotationItems: QuotationItem[] = [];
 
 export function QuotationForm({
@@ -201,9 +229,11 @@ export function QuotationForm({
   const [advice, setAdvice] = useState<QuotationAdvice | null>(null);
   const aiText = aiCopy[locale];
   const copy = formCopy[locale];
+  const calculationText = calculationCopy[locale];
   const modeText = modeCopy[locale];
   const dictionary = getDictionary(locale);
   const isEdit = mode === "edit" && Boolean(quotation);
+  const lastAutoPricesRef = useRef<Record<number, number>>({});
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const densityOptions = useMemo(
     () =>
@@ -279,6 +309,34 @@ export function QuotationForm({
     form.reset(defaultValues);
     setAdvice(null);
   }, [defaultValues, form]);
+
+  useEffect(() => {
+    watchedItems.forEach((item, index) => {
+      const densityPrice = calculateDensityUnitPrice({
+        density: item.density,
+        size: item.size,
+        currency
+      });
+      const productPrice = densityPrice ? null : findMatchingProductPrice(item, products, productById);
+      const autoPrice = densityPrice?.unitPrice ?? productPrice;
+      if (autoPrice === null || autoPrice === undefined || !Number.isFinite(autoPrice)) return;
+
+      const currentPrice = Number(item.unit_price || 0);
+      const previousAutoPrice = lastAutoPricesRef.current[index];
+      const currentPriceWasAuto =
+        previousAutoPrice !== undefined && Math.abs(currentPrice - previousAutoPrice) < 0.01;
+      const shouldApply = Boolean(densityPrice) || currentPrice === 0 || currentPriceWasAuto;
+
+      if (shouldApply && Math.abs(currentPrice - autoPrice) >= 0.01) {
+        form.setValue(`items.${index}.unit_price`, autoPrice, {
+          shouldDirty: true,
+          shouldValidate: true
+        });
+      }
+
+      lastAutoPricesRef.current[index] = autoPrice;
+    });
+  }, [currency, form, productById, products, watchedItems]);
 
   async function onSubmit(values: QuotationInput) {
     let documentWindow: Window | null = null;
@@ -453,7 +511,20 @@ export function QuotationForm({
           ))}
         </datalist>
         {fields.map((field, index) => {
-          const amount = Number(watchedItems[index]?.quantity || 0) * Number(watchedItems[index]?.unit_price || 0);
+          const item = watchedItems[index];
+          const densityPrice = calculateDensityUnitPrice({
+            density: item?.density,
+            size: item?.size,
+            currency
+          });
+          const productPrice = densityPrice ? null : findMatchingProductPrice(item, products, productById);
+          const amount = Number(item?.quantity || 0) * Number(item?.unit_price || 0);
+          const pricingHint = densityPrice
+            ? formatDensityCalculationHint(densityPrice, currency, calculationText)
+            : productPrice
+              ? `${calculationText.auto}: ${calculationText.productBasis}`
+              : calculationText.waiting;
+
           return (
             <div key={field.id} className="grid gap-4 rounded-lg border bg-card p-4 shadow-sm lg:grid-cols-12">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 lg:col-span-12">
@@ -517,6 +588,7 @@ export function QuotationForm({
                 <Label className="text-xs text-muted-foreground">{copy.lineAmount}</Label>
                 <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">{formatCurrency(amount, currency)}</div>
               </div>
+              <p className="rounded-md bg-primary/5 px-3 py-2 text-xs text-muted-foreground lg:col-span-12">{pricingHint}</p>
             </div>
           );
         })}
@@ -584,6 +656,66 @@ export function QuotationForm({
       </Button>
     </form>
   );
+}
+
+type QuotationFormItem = QuotationInput["items"][number];
+
+function findMatchingProductPrice(
+  item: QuotationFormItem | undefined,
+  products: Product[],
+  productById: Map<string, Product>
+) {
+  if (!item) return null;
+
+  const selectedProduct = item.product_id ? productById.get(item.product_id) : null;
+  if (selectedProduct?.price) return selectedProduct.price;
+
+  const normalizedSpecification = normalizeMatchText(item.specification);
+  const normalizedSize = normalizeMatchText(item.size);
+  const normalizedDensity = normalizeMatchText(item.density);
+  if (!normalizedSpecification && !normalizedSize && !normalizedDensity) return null;
+
+  const matchedProduct = products.find((product) => {
+    const productSpecification = normalizeMatchText(product.specification);
+    const productSize = normalizeMatchText(product.size);
+    const productDensity = normalizeMatchText(product.density);
+
+    const specificationMatches =
+      normalizedSpecification &&
+      productSpecification &&
+      (productSpecification.includes(normalizedSpecification) || normalizedSpecification.includes(productSpecification));
+    const sizeMatches =
+      normalizedSize &&
+      productSize &&
+      (productSize.includes(normalizedSize) || normalizedSize.includes(productSize));
+    const densityMatches =
+      normalizedDensity &&
+      productDensity &&
+      (productDensity.includes(normalizedDensity) || normalizedDensity.includes(productDensity));
+
+    return Boolean(specificationMatches || (sizeMatches && densityMatches));
+  });
+
+  return matchedProduct?.price ?? null;
+}
+
+function formatDensityCalculationHint(
+  result: DensityPriceResult,
+  currency: string,
+  text: (typeof calculationCopy)[Locale]
+) {
+  const cubicMeters = result.size.cubicMeters.toFixed(4);
+  return `${text.auto}: ${text.densityBasis} ${formatCurrency(
+    result.basePriceIdrPerCubic,
+    "IDR"
+  )}/m³ × ${text.volume} ${cubicMeters}m³ × ${text.factor} ${result.processingFactor} = ${formatCurrency(
+    result.unitPrice,
+    currency
+  )}`;
+}
+
+function normalizeMatchText(value: string | null | undefined) {
+  return `${value ?? ""}`.toLowerCase().replace(/\s+/g, "").trim();
 }
 
 function uniqueOptions(values: Array<string | null | undefined>) {
