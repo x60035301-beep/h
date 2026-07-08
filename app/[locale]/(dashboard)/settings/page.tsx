@@ -13,7 +13,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
   return (
     <div className="page-shell">
       <PageHeader title={dictionary.pages.settings.title} description={dictionary.pages.settings.description} />
-      <SettingsForm settings={settings} />
+      <SettingsForm settings={settings} locale={locale} />
     </div>
   );
 }
