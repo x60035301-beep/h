@@ -13,7 +13,7 @@ import {
   type SortingState,
   useReactTable
 } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowUpDown, Loader2, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { CustomerForm } from "@/components/customers/customer-form";
 import { CustomerImportDialog } from "@/components/customers/customer-import-dialog";
@@ -47,6 +47,7 @@ export function CustomerTable({ customers, locale }: { customers: CustomerSummar
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [open, setOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const dictionary = getDictionary(locale);
   const copy = dictionary.customerTable;
 
@@ -110,8 +111,15 @@ export function CustomerTable({ customers, locale }: { customers: CustomerSummar
               <DropdownMenuItem asChild>
                 <Link href={`/${locale}/customers/${row.original.id}`}>{copy.viewDetail}</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => deleteCustomer(row.original.id)} className="text-destructive">
-                <Trash2 className="size-4" />
+              <DropdownMenuItem
+                disabled={deletingId === row.original.id}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  void deleteCustomer(row.original.id);
+                }}
+                className="text-destructive"
+              >
+                {deletingId === row.original.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                 {copy.delete}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -119,7 +127,7 @@ export function CustomerTable({ customers, locale }: { customers: CustomerSummar
         )
       }
     ],
-    [copy, dictionary.customerStages, locale]
+    [copy, deletingId, dictionary.customerStages, locale]
   );
 
   const table = useReactTable({
@@ -135,13 +143,21 @@ export function CustomerTable({ customers, locale }: { customers: CustomerSummar
   });
 
   async function deleteCustomer(id: string) {
-    const response = await fetch(`/api/customers/${id}`, { method: "DELETE" });
-    if (!response.ok) {
-      toast({ title: copy.deleteFailed, variant: "destructive" });
-      return;
+    if (!window.confirm(getDeleteConfirmText(locale))) return;
+
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/customers/${id}`, { method: "DELETE" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast({ title: copy.deleteFailed, description: result?.error ?? result?.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: copy.deleteSuccess });
+      router.refresh();
+    } finally {
+      setDeletingId(null);
     }
-    toast({ title: copy.deleteSuccess });
-    location.reload();
   }
 
   return (
@@ -225,4 +241,10 @@ export function CustomerTable({ customers, locale }: { customers: CustomerSummar
       </div>
     </div>
   );
+}
+
+function getDeleteConfirmText(locale: Locale) {
+  if (locale === "en") return "Delete this customer and its related contacts, follow-ups, quotations, reminders, and activities?";
+  if (locale === "id") return "Hapus pelanggan ini beserta kontak, follow-up, quotation, reminder, dan aktivitas terkait?";
+  return "确认删除该客户及其联系人、跟进、报价、提醒和活动记录？";
 }
