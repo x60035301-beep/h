@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     });
     if (activityError) throw activityError;
 
-    return NextResponse.json({ data: quotation }, { status: 201 });
+    return NextResponse.json({ data: { ...quotation, document_url: `/api/quotations/${quotation.id}/pdf` } }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }

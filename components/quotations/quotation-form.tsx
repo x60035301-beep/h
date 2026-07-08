@@ -62,6 +62,9 @@ const formCopy = {
     create: "创建报价",
     createFailed: "报价创建失败",
     createSuccess: "报价单已创建",
+    documentGenerated: "报价单 PDF 已自动生成",
+    documentBlocked: "浏览器拦截了自动打开，请点击列表右侧下载按钮。",
+    generatingDocument: "正在生成报价单...",
     tryAgain: "请稍后再试。",
     material: "材料",
     labor: "人工",
@@ -86,6 +89,9 @@ const formCopy = {
     create: "Create quotation",
     createFailed: "Quotation create failed",
     createSuccess: "Quotation created",
+    documentGenerated: "Quotation PDF generated automatically",
+    documentBlocked: "The browser blocked auto-open. Use the download button in the list.",
+    generatingDocument: "Generating quotation...",
     tryAgain: "Please try again.",
     material: "Material",
     labor: "Labor",
@@ -110,6 +116,9 @@ const formCopy = {
     create: "Buat quotation",
     createFailed: "Gagal membuat quotation",
     createSuccess: "Quotation dibuat",
+    documentGenerated: "PDF quotation dibuat otomatis",
+    documentBlocked: "Browser memblokir buka otomatis. Gunakan tombol download di daftar.",
+    generatingDocument: "Membuat quotation...",
     tryAgain: "Silakan coba lagi.",
     material: "Material",
     labor: "Tenaga kerja",
@@ -212,6 +221,15 @@ export function QuotationForm({
   }, [defaultValues, form]);
 
   async function onSubmit(values: QuotationInput) {
+    let documentWindow: Window | null = null;
+    if (!isEdit && typeof window !== "undefined") {
+      documentWindow = window.open("about:blank", "_blank");
+      if (documentWindow) {
+        documentWindow.document.title = copy.generatingDocument;
+        documentWindow.document.body.innerHTML = `<p style="font-family: system-ui, sans-serif; padding: 24px;">${copy.generatingDocument}</p>`;
+      }
+    }
+
     setLoading(true);
     const response = await fetch(isEdit ? `/api/quotations/${quotation?.id}` : "/api/quotations", {
       method: isEdit ? "PATCH" : "POST",
@@ -219,14 +237,34 @@ export function QuotationForm({
       body: JSON.stringify(values)
     });
     setLoading(false);
+    const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
+      documentWindow?.close();
       toast({ title: isEdit ? modeText.updateFailed : copy.createFailed, description: payload?.error ?? copy.tryAgain, variant: "destructive" });
       return;
     }
 
-    toast({ title: isEdit ? modeText.updateSuccess : copy.createSuccess });
+    if (!isEdit) {
+      const documentUrl = payload?.data?.document_url ?? (payload?.data?.id ? `/api/quotations/${payload.data.id}/pdf` : null);
+      let blocked = false;
+
+      if (documentUrl && typeof window !== "undefined") {
+        const absoluteDocumentUrl = new URL(documentUrl, window.location.origin).toString();
+        if (documentWindow) {
+          documentWindow.location.href = absoluteDocumentUrl;
+        } else {
+          blocked = !window.open(absoluteDocumentUrl, "_blank");
+        }
+      } else {
+        documentWindow?.close();
+      }
+
+      toast({ title: copy.createSuccess, description: blocked ? copy.documentBlocked : copy.documentGenerated });
+    } else {
+      toast({ title: modeText.updateSuccess });
+    }
+
     onSaved?.();
     router.refresh();
   }
