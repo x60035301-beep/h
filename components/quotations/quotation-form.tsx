@@ -21,6 +21,7 @@ import { quotationStatuses } from "@/config/crm";
 import { toast } from "@/hooks/use-toast";
 import { currencies, getCurrencyName } from "@/lib/currencies";
 import { getDictionary } from "@/lib/dictionaries";
+import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { formatCurrency } from "@/lib/utils";
 import { quotationSchema, type QuotationInput } from "@/lib/validations";
 import type { CustomerSummary, Locale, Product, Quotation, QuotationItem } from "@/types/crm";
@@ -53,6 +54,9 @@ const formCopy = {
     addItem: "新增明细",
     product: "产品",
     productName: "产品名称",
+    density: "密度",
+    specification: "规格",
+    size: "尺寸",
     quantity: "数量",
     unitPrice: "单价",
     validUntil: "有效期",
@@ -80,6 +84,9 @@ const formCopy = {
     addItem: "Add item",
     product: "Product",
     productName: "Product name",
+    density: "Density",
+    specification: "Specification",
+    size: "Size",
     quantity: "Qty",
     unitPrice: "Unit price",
     validUntil: "Valid until",
@@ -107,6 +114,9 @@ const formCopy = {
     addItem: "Tambah item",
     product: "Produk",
     productName: "Nama produk",
+    density: "Density",
+    specification: "Spesifikasi",
+    size: "Ukuran",
     quantity: "Qty",
     unitPrice: "Harga satuan",
     validUntil: "Berlaku sampai",
@@ -179,6 +189,30 @@ export function QuotationForm({
   const modeText = modeCopy[locale];
   const dictionary = getDictionary(locale);
   const isEdit = mode === "edit" && Boolean(quotation);
+  const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+  const densityOptions = useMemo(
+    () =>
+      uniqueOptions([
+        ...products.map((product) => product.density),
+        "10D",
+        "12D",
+        "14D",
+        "16D",
+        "18D",
+        "19D",
+        "20D",
+        "22D",
+        "23D",
+        "24D",
+        "26D",
+        "30D",
+        "32D",
+        "45D"
+      ]),
+    [products]
+  );
+  const specificationOptions = useMemo(() => uniqueOptions(products.map((product) => product.specification)), [products]);
+  const sizeOptions = useMemo(() => uniqueOptions(products.map((product) => product.size)), [products]);
   const defaultValues = useMemo<QuotationInput>(
     () => ({
       customer_id: quotation?.customer_id ?? customers[0]?.id ?? "",
@@ -187,24 +221,35 @@ export function QuotationForm({
       notes: quotation?.notes ?? "",
       valid_until: quotation?.valid_until ?? "",
       items: initialItems.length
-        ? initialItems.map((item) => ({
-            product_id: item.product_id,
-            product_name: item.product_name,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            notes: item.notes ?? ""
-          }))
+        ? initialItems.map((item) => {
+            const meta = parseQuotationItemNotes(item.notes);
+            const product = item.product_id ? productById.get(item.product_id) : null;
+
+            return {
+              product_id: item.product_id,
+              product_name: item.product_name,
+              density: meta.density ?? product?.density ?? item.density ?? "",
+              specification: meta.specification ?? product?.specification ?? item.specification ?? "",
+              size: meta.size ?? product?.size ?? item.size ?? "",
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              notes: meta.note ?? ""
+            };
+          })
         : [
             {
               product_id: products[0]?.id ?? null,
               product_name: products[0]?.name ?? "",
+              density: products[0]?.density ?? "",
+              specification: products[0]?.specification ?? "",
+              size: products[0]?.size ?? "",
               quantity: 1,
               unit_price: products[0]?.price ?? 0,
               notes: ""
             }
           ]
     }),
-    [customers, initialItems, products, quotation]
+    [customers, initialItems, productById, products, quotation]
   );
   const form = useForm<QuotationInput>({
     resolver: zodResolver(quotationSchema) as any,
@@ -274,6 +319,9 @@ export function QuotationForm({
     form.setValue(`items.${index}.product_id`, productId);
     if (product) {
       form.setValue(`items.${index}.product_name`, product.name);
+      form.setValue(`items.${index}.density`, product.density ?? "");
+      form.setValue(`items.${index}.specification`, product.specification ?? "");
+      form.setValue(`items.${index}.size`, product.size ?? "");
       form.setValue(`items.${index}.unit_price`, product.price);
     }
   }
@@ -368,35 +416,79 @@ export function QuotationForm({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => append({ product_id: null, product_name: "", quantity: 1, unit_price: 0, notes: "" })}
+            onClick={() => append({ product_id: null, product_name: "", density: "", specification: "", size: "", quantity: 1, unit_price: 0, notes: "" })}
           >
             <Plus />
             {copy.addItem}
           </Button>
         </div>
+        <datalist id="quotation-density-options">
+          {densityOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+        <datalist id="quotation-specification-options">
+          {specificationOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+        <datalist id="quotation-size-options">
+          {sizeOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
         {fields.map((field, index) => {
           const amount = Number(watchedItems[index]?.quantity || 0) * Number(watchedItems[index]?.unit_price || 0);
           return (
-            <div key={field.id} className="grid gap-3 rounded-lg border p-3 lg:grid-cols-[1.3fr_1fr_120px_120px_120px_40px]">
-              <Select value={watchedItems[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder={copy.product} />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input {...form.register(`items.${index}.product_name`)} placeholder={copy.productName} />
-              <Input type="number" step="0.01" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder={copy.quantity} />
-              <Input type="number" step="0.01" {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })} placeholder={copy.unitPrice} />
-              <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">{formatCurrency(amount, currency)}</div>
-              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
-                <Trash2 />
-              </Button>
+            <div key={field.id} className="grid gap-3 rounded-lg border p-3 lg:grid-cols-12">
+              <div className="grid gap-1 lg:col-span-3">
+                <Label className="text-xs text-muted-foreground">{copy.product}</Label>
+                <Select value={watchedItems[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={copy.product} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1 lg:col-span-3">
+                <Label className="text-xs text-muted-foreground">{copy.productName}</Label>
+                <Input {...form.register(`items.${index}.product_name`)} placeholder={copy.productName} />
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.density}</Label>
+                <Input list="quotation-density-options" {...form.register(`items.${index}.density`)} placeholder="18D" />
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.specification}</Label>
+                <Input list="quotation-specification-options" {...form.register(`items.${index}.specification`)} placeholder={copy.specification} />
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.size}</Label>
+                <Input list="quotation-size-options" {...form.register(`items.${index}.size`)} placeholder="120 x 180 x 1.5" />
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.quantity}</Label>
+                <Input type="number" step="0.01" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder={copy.quantity} />
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.unitPrice}</Label>
+                <Input type="number" step="0.01" {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })} placeholder={copy.unitPrice} />
+              </div>
+              <div className="grid gap-1 lg:col-span-3">
+                <Label className="text-xs text-muted-foreground">{copy.autoAmount}</Label>
+                <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">{formatCurrency(amount, currency)}</div>
+              </div>
+              <div className="flex items-end justify-end lg:col-span-5">
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
+                  <Trash2 />
+                </Button>
+              </div>
             </div>
           );
         })}
@@ -463,6 +555,16 @@ export function QuotationForm({
         {isEdit ? modeText.save : copy.create}
       </Button>
     </form>
+  );
+}
+
+function uniqueOptions(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+    )
   );
 }
 

@@ -100,6 +100,9 @@ export type QuotationItem = {
   quotation_id: string;
   product_id: string | null;
   product_name: string;
+  density?: string | null;
+  specification?: string | null;
+  size?: string | null;
   quantity: number;
   unit_price: number;
   amount: number;

@@ -129,7 +129,7 @@ export function QuotationList({
               {copy.create}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-5xl">
+          <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{copy.createTitle}</DialogTitle>
               <DialogDescription>{copy.createDescription}</DialogDescription>

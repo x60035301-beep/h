@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 
 import { getApiContext, handleApiError, isApiError, type ApiContext } from "@/lib/api";
+import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { formatDate } from "@/lib/utils";
 
 type Context = { params: Promise<{ id: string }> };
@@ -39,6 +40,7 @@ type PdfPrintableItem = PdfQuotationItem & {
   density: string | null;
   specification: string | null;
   size: string | null;
+  display_note: string | null;
 };
 
 type PdfCustomer = {
@@ -115,9 +117,8 @@ async function getPrintableItems(supabase: ApiContext["supabase"], items: PdfQuo
   if (productIds.length === 0) {
     return items.map((item) => ({
       ...item,
-      density: null,
-      specification: item.notes,
-      size: null
+      ...metaToPrintableFields(item.notes),
+      notes: item.notes
     }));
   }
 
@@ -132,14 +133,27 @@ async function getPrintableItems(supabase: ApiContext["supabase"], items: PdfQuo
   const productMap = new Map(typedProducts.map((product) => [product.id, product]));
   return items.map((item) => {
     const product = item.product_id ? productMap.get(item.product_id) : null;
+    const meta = parseQuotationItemNotes(item.notes);
 
     return {
       ...item,
-      density: product?.density ?? null,
-      specification: product?.specification ?? item.notes ?? null,
-      size: product?.size ?? null
+      density: meta.density ?? product?.density ?? null,
+      specification: meta.specification ?? product?.specification ?? meta.note ?? null,
+      size: meta.size ?? product?.size ?? null,
+      display_note: meta.note
     };
   });
+}
+
+function metaToPrintableFields(notes: string | null): Pick<PdfPrintableItem, "density" | "specification" | "size" | "display_note"> {
+  const meta = parseQuotationItemNotes(notes);
+
+  return {
+    density: meta.density,
+    specification: meta.specification ?? meta.note,
+    size: meta.size,
+    display_note: meta.note
+  };
 }
 
 function renderQuotationPdf({
@@ -591,7 +605,7 @@ function buildSpecificationText(item: PdfPrintableItem) {
 }
 
 function buildNoteText(item: PdfPrintableItem) {
-  if (item.notes) return item.notes;
+  if (item.display_note) return item.display_note;
   const quantity = Number(item.quantity ?? 0);
   return quantity > 0 ? `${formatQuantity(quantity)} kubik` : "-";
 }

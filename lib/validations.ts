@@ -47,6 +47,9 @@ export const productSchema = z.object({
 export const quotationItemSchema = z.object({
   product_id: z.string().uuid().optional().nullable(),
   product_name: z.string().min(2),
+  density: z.string().optional().nullable(),
+  specification: z.string().optional().nullable(),
+  size: z.string().optional().nullable(),
   quantity: z.coerce.number().positive(),
   unit_price: z.coerce.number().min(0),
   notes: z.string().optional().nullable()

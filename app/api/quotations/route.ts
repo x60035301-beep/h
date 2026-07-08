@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
+import { serializeQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { makeQuotationNo } from "@/lib/utils";
 import { quotationSchema } from "@/lib/validations";
 
@@ -47,7 +48,12 @@ export async function POST(request: Request) {
       quantity: item.quantity,
       unit_price: item.unit_price,
       amount: item.quantity * item.unit_price,
-      notes: item.notes
+      notes: serializeQuotationItemNotes({
+        density: item.density,
+        specification: item.specification,
+        size: item.size,
+        note: item.notes
+      })
     }));
     const { error: itemError } = await context.supabase.from("quotation_items").insert(items);
     if (itemError) throw itemError;
