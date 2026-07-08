@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
@@ -17,11 +17,13 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { quotationStatuses } from "@/config/crm";
 import { toast } from "@/hooks/use-toast";
 import { currencies, getCurrencyName } from "@/lib/currencies";
+import { getDictionary } from "@/lib/dictionaries";
 import { formatCurrency } from "@/lib/utils";
 import { quotationSchema, type QuotationInput } from "@/lib/validations";
-import type { CustomerSummary, Locale, Product } from "@/types/crm";
+import type { CustomerSummary, Locale, Product, Quotation, QuotationItem } from "@/types/crm";
 
 type QuotationAdvice = {
   materialCostRatio: number;
@@ -116,15 +118,47 @@ const formCopy = {
   }
 } as const;
 
+const modeCopy = {
+  zh: {
+    status: "状态",
+    selectStatus: "选择状态",
+    save: "保存报价",
+    updateFailed: "报价更新失败",
+    updateSuccess: "报价单已更新"
+  },
+  en: {
+    status: "Status",
+    selectStatus: "Select status",
+    save: "Save quotation",
+    updateFailed: "Quotation update failed",
+    updateSuccess: "Quotation updated"
+  },
+  id: {
+    status: "Status",
+    selectStatus: "Pilih status",
+    save: "Simpan quotation",
+    updateFailed: "Gagal update quotation",
+    updateSuccess: "Quotation diupdate"
+  }
+} as const;
+
+const emptyQuotationItems: QuotationItem[] = [];
+
 export function QuotationForm({
   locale,
   customers,
   products,
+  mode = "create",
+  quotation,
+  items: initialItems = emptyQuotationItems,
   onSaved
 }: {
   locale: Locale;
   customers: CustomerSummary[];
   products: Product[];
+  mode?: "create" | "edit";
+  quotation?: Quotation;
+  items?: QuotationItem[];
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -133,26 +167,54 @@ export function QuotationForm({
   const [advice, setAdvice] = useState<QuotationAdvice | null>(null);
   const aiText = aiCopy[locale];
   const copy = formCopy[locale];
+  const modeText = modeCopy[locale];
+  const dictionary = getDictionary(locale);
+  const isEdit = mode === "edit" && Boolean(quotation);
+  const defaultValues = useMemo<QuotationInput>(
+    () => ({
+      customer_id: quotation?.customer_id ?? customers[0]?.id ?? "",
+      status: quotation?.status ?? "draft",
+      currency: (quotation?.currency ?? "USD") as QuotationInput["currency"],
+      notes: quotation?.notes ?? "",
+      valid_until: quotation?.valid_until ?? "",
+      items: initialItems.length
+        ? initialItems.map((item) => ({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            notes: item.notes ?? ""
+          }))
+        : [
+            {
+              product_id: products[0]?.id ?? null,
+              product_name: products[0]?.name ?? "",
+              quantity: 1,
+              unit_price: products[0]?.price ?? 0,
+              notes: ""
+            }
+          ]
+    }),
+    [customers, initialItems, products, quotation]
+  );
   const form = useForm<QuotationInput>({
     resolver: zodResolver(quotationSchema) as any,
-    defaultValues: {
-      customer_id: customers[0]?.id ?? "",
-      status: "draft",
-      currency: "USD",
-      notes: "",
-      valid_until: "",
-      items: [{ product_id: products[0]?.id ?? null, product_name: products[0]?.name ?? "", quantity: 1, unit_price: products[0]?.price ?? 0, notes: "" }]
-    }
+    defaultValues
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
-  const items = form.watch("items");
+  const watchedItems = form.watch("items");
   const currency = form.watch("currency");
-  const total = useMemo(() => items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0), [items]);
+  const total = useMemo(() => watchedItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0), [watchedItems]);
+
+  useEffect(() => {
+    form.reset(defaultValues);
+    setAdvice(null);
+  }, [defaultValues, form]);
 
   async function onSubmit(values: QuotationInput) {
     setLoading(true);
-    const response = await fetch("/api/quotations", {
-      method: "POST",
+    const response = await fetch(isEdit ? `/api/quotations/${quotation?.id}` : "/api/quotations", {
+      method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values)
     });
@@ -160,11 +222,11 @@ export function QuotationForm({
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      toast({ title: copy.createFailed, description: payload?.error ?? copy.tryAgain, variant: "destructive" });
+      toast({ title: isEdit ? modeText.updateFailed : copy.createFailed, description: payload?.error ?? copy.tryAgain, variant: "destructive" });
       return;
     }
 
-    toast({ title: copy.createSuccess });
+    toast({ title: isEdit ? modeText.updateSuccess : copy.createSuccess });
     onSaved?.();
     router.refresh();
   }
@@ -209,7 +271,7 @@ export function QuotationForm({
 
   return (
     <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <div className="grid gap-2 sm:col-span-2">
           <Label>{copy.customer}</Label>
           <Select value={form.watch("customer_id")} onValueChange={(value) => form.setValue("customer_id", value)}>
@@ -220,6 +282,21 @@ export function QuotationForm({
               {customers.map((customer) => (
                 <SelectItem key={customer.id} value={customer.id}>
                   {customer.company_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>{modeText.status}</Label>
+          <Select value={form.watch("status")} onValueChange={(value) => form.setValue("status", value as QuotationInput["status"])}>
+            <SelectTrigger>
+              <SelectValue placeholder={modeText.selectStatus} />
+            </SelectTrigger>
+            <SelectContent>
+              {quotationStatuses.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {dictionary.quotationStatuses[status.value]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -260,10 +337,10 @@ export function QuotationForm({
           </Button>
         </div>
         {fields.map((field, index) => {
-          const amount = Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0);
+          const amount = Number(watchedItems[index]?.quantity || 0) * Number(watchedItems[index]?.unit_price || 0);
           return (
             <div key={field.id} className="grid gap-3 rounded-lg border p-3 lg:grid-cols-[1.3fr_1fr_120px_120px_120px_40px]">
-              <Select value={items[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
+              <Select value={watchedItems[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
                 <SelectTrigger>
                   <SelectValue placeholder={copy.product} />
                 </SelectTrigger>
@@ -309,7 +386,7 @@ export function QuotationForm({
             <p className="font-medium">{aiText.title}</p>
             <p className="mt-1 text-sm text-muted-foreground">{aiText.cost} / {aiText.margin} / {aiText.risk}</p>
           </div>
-          <Button type="button" variant="outline" onClick={requestAiAdvice} disabled={aiLoading || !items.length}>
+          <Button type="button" variant="outline" onClick={requestAiAdvice} disabled={aiLoading || !watchedItems.length}>
             {aiLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {aiLoading ? aiText.loading : aiText.button}
           </Button>
@@ -345,7 +422,7 @@ export function QuotationForm({
 
       <Button type="submit" disabled={loading || !customers.length}>
         {loading ? <Loader2 className="animate-spin" /> : null}
-        {copy.create}
+        {isEdit ? modeText.save : copy.create}
       </Button>
     </form>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Copy, Download, FileText, Plus } from "lucide-react";
+import { Copy, Download, FileText, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { QuotationForm } from "@/components/quotations/quotation-form";
@@ -22,7 +22,31 @@ import { toast } from "@/hooks/use-toast";
 import { getCurrencyLabel } from "@/lib/currencies";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { CustomerSummary, Locale, Product, Quotation } from "@/types/crm";
+import type { CustomerSummary, Locale, Product, Quotation, QuotationItem } from "@/types/crm";
+
+const quotationListCopy = {
+  zh: {
+    edit: "编辑报价",
+    editTitle: "编辑报价单",
+    editDescription: "更新客户、状态、币种、有效期和产品明细。",
+    loadFailed: "读取报价失败",
+    loading: "正在读取报价明细..."
+  },
+  en: {
+    edit: "Edit quotation",
+    editTitle: "Edit quotation",
+    editDescription: "Update customer, status, currency, validity, and line items.",
+    loadFailed: "Failed to load quotation",
+    loading: "Loading quotation details..."
+  },
+  id: {
+    edit: "Edit quotation",
+    editTitle: "Edit quotation",
+    editDescription: "Update pelanggan, status, mata uang, masa berlaku, dan item produk.",
+    loadFailed: "Gagal memuat quotation",
+    loading: "Memuat detail quotation..."
+  }
+} as const;
 
 export function QuotationList({
   locale,
@@ -39,8 +63,12 @@ export function QuotationList({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editDetail, setEditDetail] = useState<{ quotation: Quotation; items: QuotationItem[] } | null>(null);
   const dictionary = getDictionary(locale);
   const copy = dictionary.quotations;
+  const listCopy = quotationListCopy[locale];
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") return;
@@ -59,6 +87,32 @@ export function QuotationList({
     }
     toast({ title: copy.copySuccess });
     location.reload();
+  }
+
+  async function openEditQuotation(quotation: Quotation) {
+    setEditOpen(true);
+    setEditLoading(true);
+    setEditDetail(null);
+
+    try {
+      const response = await fetch(`/api/quotations/${quotation.id}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? listCopy.loadFailed);
+      setEditDetail(payload.data);
+    } catch (error) {
+      toast({ title: listCopy.loadFailed, description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+      setEditOpen(false);
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  function handleEditOpenChange(nextOpen: boolean) {
+    setEditOpen(nextOpen);
+    if (!nextOpen) {
+      setEditDetail(null);
+      setEditLoading(false);
+    }
   }
 
   return (
@@ -121,6 +175,9 @@ export function QuotationList({
                   <TableCell>{formatDate(quotation.created_at, "yyyy-MM-dd HH:mm", locale)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEditQuotation(quotation)} aria-label={listCopy.edit}>
+                        <Pencil />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => copyQuotation(quotation.id)} aria-label={copy.copy}>
                         <Copy />
                       </Button>
@@ -137,6 +194,30 @@ export function QuotationList({
           </TableBody>
         </Table>
       </CardContent>
+      <Dialog open={editOpen} onOpenChange={handleEditOpenChange}>
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{listCopy.editTitle}</DialogTitle>
+            <DialogDescription>{listCopy.editDescription}</DialogDescription>
+          </DialogHeader>
+          {editLoading ? (
+            <div className="flex min-h-48 items-center justify-center rounded-lg border bg-muted/30 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 size-4 animate-spin" />
+              {listCopy.loading}
+            </div>
+          ) : editDetail ? (
+            <QuotationForm
+              locale={locale}
+              customers={customers}
+              products={products}
+              mode="edit"
+              quotation={editDetail.quotation}
+              items={editDetail.items}
+              onSaved={() => handleEditOpenChange(false)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
