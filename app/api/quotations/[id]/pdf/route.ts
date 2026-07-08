@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import PDFDocument from "pdfkit";
+import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
 
 import { getApiContext, handleApiError, isApiError, type ApiContext } from "@/lib/api";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
@@ -167,11 +167,12 @@ function renderQuotationPdf({
   customer: PdfCustomer;
   settings: PdfSettings;
 }) {
-  return new Promise<Buffer>((resolve) => {
+  return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 36 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
     const palette = {
       navy: "#073F67",
