@@ -63,6 +63,8 @@ const formCopy = {
     size: "尺寸",
     quantity: "数量",
     unitPrice: "单价",
+    singlePiecePrice: "单片价格",
+    totalVolume: "总体积",
     lineAmount: "金额",
     validUntil: "有效期",
     notes: "备注",
@@ -97,6 +99,8 @@ const formCopy = {
     size: "Size",
     quantity: "Qty",
     unitPrice: "Unit price",
+    singlePiecePrice: "Piece price",
+    totalVolume: "Total volume",
     lineAmount: "Amount",
     validUntil: "Valid until",
     notes: "Notes",
@@ -131,6 +135,8 @@ const formCopy = {
     size: "Ukuran",
     quantity: "Qty",
     unitPrice: "Harga satuan",
+    singlePiecePrice: "Harga per pcs",
+    totalVolume: "Total volume",
     lineAmount: "Jumlah",
     validUntil: "Berlaku sampai",
     notes: "Catatan",
@@ -519,7 +525,19 @@ export function QuotationForm({
                 <Label className="text-xs text-muted-foreground">{copy.unitPrice}</Label>
                 <Input type="number" step="0.01" {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })} placeholder={copy.unitPrice} />
               </div>
-              <div className="grid gap-1 lg:col-span-6">
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.totalVolume}</Label>
+                <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                  {calculation ? `${calculation.totalVolume.toLocaleString("en-US", { maximumFractionDigits: 4 })} m3` : "-"}
+                </div>
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
+                <Label className="text-xs text-muted-foreground">{copy.singlePiecePrice}</Label>
+                <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                  {calculation ? formatCurrency(calculation.singlePiecePrice, currency) : "-"}
+                </div>
+              </div>
+              <div className="grid gap-1 lg:col-span-2">
                 <Label className="text-xs text-muted-foreground">{copy.lineAmount}</Label>
                 <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">{formatCurrency(amount, currency)}</div>
               </div>

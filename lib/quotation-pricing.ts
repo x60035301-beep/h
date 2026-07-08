@@ -9,6 +9,8 @@ export type FoamLineCalculation = {
   size: ParsedFoamSize;
   unitPrice: number;
   quantity: number;
+  singlePiecePrice: number;
+  totalVolume: number;
   amount: number;
 };
 
@@ -46,10 +48,16 @@ export function calculateFoamLineAmount({
     size: parsedSize,
     unitPrice: normalizedUnitPrice,
     quantity: normalizedQuantity,
+    singlePiecePrice: roundMoney(normalizedUnitPrice * parsedSize.cubicMeters),
+    totalVolume: roundVolume(parsedSize.cubicMeters * normalizedQuantity),
     amount: roundMoney(normalizedUnitPrice * parsedSize.cubicMeters * normalizedQuantity)
   };
 }
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function roundVolume(value: number) {
+  return Math.round((value + Number.EPSILON) * 10000) / 10000;
 }
