@@ -8,6 +8,7 @@ import {
   quotationStatuses,
   reminderTypes
 } from "@/config/crm";
+import { currencyCodes } from "@/lib/currencies";
 
 export const customerSchema = z.object({
   company_name: z.string().min(2, "Company name is required"),
@@ -54,7 +55,11 @@ export const quotationItemSchema = z.object({
 export const quotationSchema = z.object({
   customer_id: z.string().uuid(),
   status: z.enum(quotationStatuses.map((item) => item.value) as [string, ...string[]]).default("draft"),
-  currency: z.string().min(3).max(3).default("USD"),
+  currency: z
+    .string()
+    .transform((value) => value.toUpperCase())
+    .pipe(z.enum(currencyCodes))
+    .default("USD"),
   notes: z.string().optional().nullable(),
   valid_until: z.string().optional().nullable(),
   items: z.array(quotationItemSchema).min(1)

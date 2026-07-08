@@ -16,11 +16,17 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(value: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2
-  }).format(value);
+  const normalizedCurrency = currency.toUpperCase();
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: normalizedCurrency,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch {
+    return `${normalizedCurrency} ${Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  }
 }
 
 export function formatDate(date: string | Date | null | undefined, pattern = "yyyy-MM-dd HH:mm", locale: Locale = "zh") {

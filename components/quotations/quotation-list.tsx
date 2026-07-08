@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
+import { getCurrencyLabel } from "@/lib/currencies";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { CustomerSummary, Locale, Product, Quotation } from "@/types/crm";
@@ -110,7 +111,12 @@ export function QuotationList({
                       {dictionary.quotationStatuses[quotation.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell>{formatCurrency(quotation.total_amount, quotation.currency)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium">{formatCurrency(quotation.total_amount, quotation.currency)}</span>
+                      <span className="text-xs text-muted-foreground">{getCurrencyLabel(quotation.currency)}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>{quotation.valid_until ?? "-"}</TableCell>
                   <TableCell>{formatDate(quotation.created_at, "yyyy-MM-dd HH:mm", locale)}</TableCell>
                   <TableCell>

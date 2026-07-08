@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { currencies } from "@/lib/currencies";
 import { formatCurrency } from "@/lib/utils";
 import { quotationSchema, type QuotationInput } from "@/lib/validations";
 import type { CustomerSummary, Locale, Product } from "@/types/crm";
@@ -150,7 +151,22 @@ export function QuotationForm({
         </div>
         <div className="grid gap-2">
           <Label>币种</Label>
-          <Input {...form.register("currency")} maxLength={3} />
+          <Select value={currency} onValueChange={(value) => form.setValue("currency", value as QuotationInput["currency"])}>
+            <SelectTrigger>
+              <SelectValue placeholder="选择币种" />
+            </SelectTrigger>
+            <SelectContent>
+              {currencies.map((item) => (
+                <SelectItem key={item.code} value={item.code}>
+                  <span className="flex items-center gap-2">
+                    <span className="w-10 font-medium">{item.code}</span>
+                    <span className="text-muted-foreground">{item.symbol}</span>
+                    <span>{item.name}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
