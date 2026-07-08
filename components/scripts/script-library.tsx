@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Layers3, Loader2, Search, Shuffle, Star } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -216,31 +217,39 @@ const randomLabels: Record<
     hint: string;
     empty: string;
     chooseCategory: string;
+    saved: string;
+    saveFailed: string;
     count: string;
   }
 > = {
   zh: {
     button: "按类别生成",
     title: "按类别生成模板",
-    hint: "已根据所选类别生成多条候选话术，可直接复制使用。",
+    hint: "已按当前选择生成多条话术，并保存到话术库，可直接复制使用。",
     empty: "当前类别没有可生成的模板",
     chooseCategory: "请先选择一个话术类别",
+    saved: "话术已生成并保存",
+    saveFailed: "话术保存失败",
     count: "本次生成 {count} 条"
   },
   en: {
     button: "Generate by Category",
     title: "Category Template",
-    hint: "Generated multiple scripts from the selected category and ready to copy.",
+    hint: "Generated scripts for the current selection, saved them to the library, and made them ready to copy.",
     empty: "No templates available in this category",
     chooseCategory: "Choose a script category first",
+    saved: "Scripts generated and saved",
+    saveFailed: "Script save failed",
     count: "{count} generated"
   },
   id: {
     button: "Buat per Kategori",
     title: "Template Kategori",
-    hint: "Beberapa skrip dibuat dari kategori yang dipilih dan siap disalin.",
+    hint: "Skrip dibuat sesuai pilihan saat ini, disimpan ke library, dan siap disalin.",
     empty: "Tidak ada template dalam kategori ini",
     chooseCategory: "Pilih kategori skrip terlebih dahulu",
+    saved: "Skrip dibuat dan disimpan",
+    saveFailed: "Gagal menyimpan skrip",
     count: "{count} dibuat"
   }
 };
@@ -266,6 +275,7 @@ function getTagLabel(tag: string, locale: Locale) {
 }
 
 export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Script[] }) {
+  const router = useRouter();
   const dictionary = getDictionary(locale);
   const copyText = dictionary.scriptLibrary;
   const [query, setQuery] = useState("");
@@ -276,10 +286,7 @@ export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Sc
   const [generating, setGenerating] = useState(false);
   const randomText = randomLabels[locale];
 
-  const categories = useMemo(() => {
-    const usedIds = new Set(scripts.map((script) => getCategory(script)?.id).filter(Boolean));
-    return scriptCategories.filter((category) => usedIds.has(category.id));
-  }, [scripts]);
+  const categories = useMemo(() => [...scriptCategories], []);
 
   const filtered = useMemo(
     () =>
@@ -294,6 +301,11 @@ export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Sc
       }),
     [scripts, locale, query, category]
   );
+
+  const filteredSavedScripts = useMemo(() => {
+    const generatedIds = new Set(generatedScripts.map((script) => script.id));
+    return filtered.filter((script) => !generatedIds.has(script.id));
+  }, [filtered, generatedScripts]);
 
   useEffect(() => {
     setGeneratedScripts([]);
@@ -315,56 +327,68 @@ export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Sc
     });
   }
 
+  async function generateAndSaveForCategory(targetCategory: (typeof scriptCategories)[number], count: number) {
+    const categoryLabel = targetCategory.names[locale];
+    const response = await fetch("/api/ai/scripts/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale, category: categoryLabel, count })
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) throw new Error(payload?.error ?? randomText.empty);
+
+    const aiScripts = Array.isArray(payload?.data?.scripts) ? payload.data.scripts : [];
+    if (!aiScripts.length) throw new Error(randomText.empty);
+
+    return Promise.all(
+      aiScripts.map(async (script: Partial<Script>, index: number) => {
+        const createResponse = await fetch("/api/scripts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: targetCategory.id,
+            title: script.title ?? `${categoryLabel} ${index + 1}`,
+            content_zh: script.content_zh ?? "",
+            content_id: script.content_id ?? script.content_zh ?? "",
+            tags: Array.isArray(script.tags) && script.tags.length ? script.tags : [categoryLabel]
+          })
+        });
+        const createdPayload = await createResponse.json().catch(() => null);
+
+        if (!createResponse.ok) throw new Error(createdPayload?.error ?? randomText.saveFailed);
+
+        return {
+          ...(createdPayload?.data as Script),
+          category_name: categoryLabel,
+          is_favorite: false
+        };
+      })
+    );
+  }
+
   async function generateRandomTemplate() {
-    if (category === "all") {
-      toast({ title: randomText.chooseCategory, variant: "destructive" });
-      return;
-    }
-
-    const candidates = filtered.filter((script) => getCategory(script)?.id === category);
-
-    if (!candidates.length) {
-      toast({ title: randomText.empty, variant: "destructive" });
-      return;
-    }
-
     setGenerating(true);
 
     try {
-      const categoryLabel = categories.find((item) => item.id === category)?.names[locale] ?? category;
-      const response = await fetch("/api/ai/scripts/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, category: categoryLabel, count: 6 })
-      });
-      const payload = await response.json().catch(() => null);
+      const targetCategories = category === "all" ? categories : categories.filter((item) => item.id === category);
+      const savedScripts: Script[] = [];
 
-      if (!response.ok) throw new Error(payload?.error ?? randomText.empty);
+      if (!targetCategories.length) throw new Error(randomText.chooseCategory);
 
-      const aiScripts = Array.isArray(payload?.data?.scripts) ? payload.data.scripts : [];
-      if (aiScripts.length) {
-        setGeneratedScripts(
-          aiScripts.map((script: Partial<Script>, index: number) => ({
-            id: `ai-${category}-${Date.now()}-${index}`,
-            category_id: category,
-            category_name: categoryLabel,
-            title: script.title ?? `${categoryLabel} ${index + 1}`,
-            content_zh: script.content_zh ?? "",
-            content_id: script.content_id ?? "",
-            tags: Array.isArray(script.tags) ? script.tags : [categoryLabel],
-            is_favorite: false
-          }))
-        );
-        return;
+      for (const targetCategory of targetCategories) {
+        const batch = await generateAndSaveForCategory(targetCategory, category === "all" ? 4 : 6);
+        savedScripts.push(...batch);
       }
+
+      setGeneratedScripts(savedScripts);
+      toast({ title: randomText.saved, description: randomText.count.replace("{count}", String(savedScripts.length)) });
+      router.refresh();
     } catch (error) {
-      toast({ title: "AI 生成失败，已使用模板库候选", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+      toast({ title: randomText.saveFailed, description: error instanceof Error ? error.message : undefined, variant: "destructive" });
     } finally {
       setGenerating(false);
     }
-
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    setGeneratedScripts(shuffled.slice(0, Math.min(6, shuffled.length)));
   }
 
   return (
@@ -393,7 +417,7 @@ export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Sc
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" onClick={generateRandomTemplate} disabled={!scripts.length || generating} className="w-full sm:w-auto">
+        <Button type="button" variant="outline" onClick={generateRandomTemplate} disabled={generating} className="w-full sm:w-auto">
           {generating ? <Loader2 className="animate-spin" /> : <Shuffle />}
           {randomText.button}
         </Button>
@@ -449,9 +473,9 @@ export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Sc
         </Card>
       ) : null}
 
-      {filtered.length ? (
+      {filteredSavedScripts.length ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          {filtered.map((script) => (
+          {filteredSavedScripts.map((script) => (
             <Card key={script.id} className="overflow-hidden">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -488,7 +512,7 @@ export function ScriptLibrary({ locale, scripts }: { locale: Locale; scripts: Sc
             </Card>
           ))}
         </div>
-      ) : (
+      ) : generatedScripts.length ? null : (
         <div className="rounded-lg border bg-card py-16 text-center text-sm text-muted-foreground">{copyText.empty}</div>
       )}
     </div>
