@@ -54,11 +54,16 @@ const formCopy = {
     addItem: "新增明细",
     product: "产品",
     productName: "产品名称",
+    itemNumber: "明细",
+    pricingBasis: "报价方式",
+    densityPricing: "密度报价",
+    specificationPricing: "规格报价",
     density: "密度",
     specification: "规格",
     size: "尺寸",
     quantity: "数量",
     unitPrice: "单价",
+    lineAmount: "金额",
     validUntil: "有效期",
     notes: "备注",
     notesPlaceholder: "FOB、MOQ、交期...",
@@ -84,11 +89,16 @@ const formCopy = {
     addItem: "Add item",
     product: "Product",
     productName: "Product name",
+    itemNumber: "Item",
+    pricingBasis: "Quote basis",
+    densityPricing: "Density price",
+    specificationPricing: "Specification price",
     density: "Density",
     specification: "Specification",
     size: "Size",
     quantity: "Qty",
     unitPrice: "Unit price",
+    lineAmount: "Amount",
     validUntil: "Valid until",
     notes: "Notes",
     notesPlaceholder: "FOB, MOQ, lead time...",
@@ -114,11 +124,16 @@ const formCopy = {
     addItem: "Tambah item",
     product: "Produk",
     productName: "Nama produk",
+    itemNumber: "Item",
+    pricingBasis: "Dasar harga",
+    densityPricing: "Harga density",
+    specificationPricing: "Harga spesifikasi",
     density: "Density",
     specification: "Spesifikasi",
     size: "Ukuran",
     quantity: "Qty",
     unitPrice: "Harga satuan",
+    lineAmount: "Jumlah",
     validUntil: "Berlaku sampai",
     notes: "Catatan",
     notesPlaceholder: "FOB, MOQ, lead time...",
@@ -440,8 +455,22 @@ export function QuotationForm({
         {fields.map((field, index) => {
           const amount = Number(watchedItems[index]?.quantity || 0) * Number(watchedItems[index]?.unit_price || 0);
           return (
-            <div key={field.id} className="grid gap-3 rounded-lg border p-3 lg:grid-cols-12">
-              <div className="grid gap-1 lg:col-span-3">
+            <div key={field.id} className="grid gap-4 rounded-lg border bg-card p-4 shadow-sm lg:grid-cols-12">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3 lg:col-span-12">
+                <div>
+                  <p className="font-medium">
+                    {copy.itemNumber} #{index + 1}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {copy.pricingBasis}: {copy.densityPricing} / {copy.specificationPricing}
+                  </p>
+                </div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
+                  <Trash2 />
+                </Button>
+              </div>
+
+              <div className="grid gap-1 lg:col-span-6">
                 <Label className="text-xs text-muted-foreground">{copy.product}</Label>
                 <Select value={watchedItems[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
                   <SelectTrigger>
@@ -456,38 +485,37 @@ export function QuotationForm({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1 lg:col-span-3">
+              <div className="grid gap-1 lg:col-span-6">
                 <Label className="text-xs text-muted-foreground">{copy.productName}</Label>
                 <Input {...form.register(`items.${index}.product_name`)} placeholder={copy.productName} />
               </div>
-              <div className="grid gap-1 lg:col-span-2">
-                <Label className="text-xs text-muted-foreground">{copy.density}</Label>
-                <Input list="quotation-density-options" {...form.register(`items.${index}.density`)} placeholder="18D" />
+
+              <div className="grid gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 md:grid-cols-3 lg:col-span-12">
+                <div className="grid gap-1">
+                  <Label className="text-xs font-medium text-primary">{copy.densityPricing}</Label>
+                  <Input list="quotation-density-options" {...form.register(`items.${index}.density`)} placeholder="18D / 20D / 22D" />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs font-medium text-primary">{copy.specificationPricing}</Label>
+                  <Input list="quotation-specification-options" {...form.register(`items.${index}.specification`)} placeholder={copy.specification} />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs font-medium text-primary">{copy.size}</Label>
+                  <Input list="quotation-size-options" {...form.register(`items.${index}.size`)} placeholder="120 x 180 x 1.5" />
+                </div>
               </div>
-              <div className="grid gap-1 lg:col-span-2">
-                <Label className="text-xs text-muted-foreground">{copy.specification}</Label>
-                <Input list="quotation-specification-options" {...form.register(`items.${index}.specification`)} placeholder={copy.specification} />
-              </div>
-              <div className="grid gap-1 lg:col-span-2">
-                <Label className="text-xs text-muted-foreground">{copy.size}</Label>
-                <Input list="quotation-size-options" {...form.register(`items.${index}.size`)} placeholder="120 x 180 x 1.5" />
-              </div>
-              <div className="grid gap-1 lg:col-span-2">
+
+              <div className="grid gap-1 lg:col-span-3">
                 <Label className="text-xs text-muted-foreground">{copy.quantity}</Label>
                 <Input type="number" step="0.01" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder={copy.quantity} />
               </div>
-              <div className="grid gap-1 lg:col-span-2">
+              <div className="grid gap-1 lg:col-span-3">
                 <Label className="text-xs text-muted-foreground">{copy.unitPrice}</Label>
                 <Input type="number" step="0.01" {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })} placeholder={copy.unitPrice} />
               </div>
-              <div className="grid gap-1 lg:col-span-3">
-                <Label className="text-xs text-muted-foreground">{copy.autoAmount}</Label>
+              <div className="grid gap-1 lg:col-span-6">
+                <Label className="text-xs text-muted-foreground">{copy.lineAmount}</Label>
                 <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">{formatCurrency(amount, currency)}</div>
-              </div>
-              <div className="flex items-end justify-end lg:col-span-5">
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
-                  <Trash2 />
-                </Button>
               </div>
             </div>
           );
