@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, Eye } from "lucide-react";
+import { ArrowRight, ClipboardList, Eye } from "lucide-react";
 
 import { ProgressLine, StageRail } from "@/components/ai-crm/progress-line";
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +11,9 @@ import { defaultLocale, isLocale } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/utils";
 
 const labels = {
-  zh: { quotation: "关联报价", lifecycle: "订单生命周期", detail: "查看内部", progress: "履约进度", hint: "点击阶段可查看该环节内部情况" },
-  en: { quotation: "Linked quotation", lifecycle: "Order lifecycle", detail: "View details", progress: "Fulfillment progress", hint: "Click any stage to inspect its internal status" },
-  id: { quotation: "Penawaran terkait", lifecycle: "Siklus order", detail: "Lihat detail", progress: "Progres fulfillment", hint: "Klik tahap untuk melihat status internal" }
+  zh: { quotation: "关联报价", lifecycle: "订单生命周期", detail: "查看内部", progress: "履约进度", hint: "点击阶段可查看该环节内部情况", empty: "暂无订单数据", emptyDescription: "从真实报价生成订单后，这里会显示 PI、合同、生产、发货、开票、收款和售后生命周期。" },
+  en: { quotation: "Linked quotation", lifecycle: "Order lifecycle", detail: "View details", progress: "Fulfillment progress", hint: "Click any stage to inspect its internal status", empty: "No orders", emptyDescription: "Create orders from real quotations to track PI, contract, production, shipment, invoice, payment, and after sales." },
+  id: { quotation: "Penawaran terkait", lifecycle: "Siklus order", detail: "Lihat detail", progress: "Progres fulfillment", hint: "Klik tahap untuk melihat status internal", empty: "Belum ada order", emptyDescription: "Buat order dari quotation nyata untuk melacak PI, kontrak, produksi, shipment, invoice, payment, dan after sales." }
 } as const;
 
 export default async function OrdersPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -24,6 +25,8 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
   return (
     <div className="page-shell">
       <PageHeader title={copy.pages.orders.title} description={copy.pages.orders.description} />
+
+      {!orderRecords.length ? <EmptyState icon={ClipboardList} title={page.empty} description={page.emptyDescription} /> : null}
 
       <section className="grid gap-4">
         {orderRecords.map((order) => (

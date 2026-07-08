@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, Mail, MessageCircle, Phone, Sparkles } from "lucide-react";
+import { ArrowLeft, ClipboardList, Factory, FileText, Inbox, Mail, MessageCircle, PackageOpen, Phone, Sparkles } from "lucide-react";
 
 import { ProgressLine } from "@/components/ai-crm/progress-line";
 import { AttachmentUpload } from "@/components/customers/attachment-upload";
 import { CustomerForm } from "@/components/customers/customer-form";
 import { FollowupForm } from "@/components/customers/followup-form";
 import { FollowupTimeline } from "@/components/customers/followup-timeline";
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,14 @@ const detailLabels = {
     delivered: "已送达",
     preparing: "准备中",
     confirmSample: "确认手感和密度",
-    sendTracking: "发送物流单号"
+    sendTracking: "发送物流单号",
+    noInquiries: "暂无询盘记录",
+    noOrders: "暂无订单记录",
+    noSamples: "暂无样品记录",
+    noProduction: "暂无生产记录",
+    noQuotations: "暂无报价记录",
+    noAttachments: "暂无附件",
+    noAiReport: "暂无 AI 分析报告"
   },
   en: {
     website: "Website",
@@ -52,7 +60,14 @@ const detailLabels = {
     delivered: "Delivered",
     preparing: "Preparing",
     confirmSample: "Confirm feel and density",
-    sendTracking: "Send tracking number"
+    sendTracking: "Send tracking number",
+    noInquiries: "No inquiry records",
+    noOrders: "No order records",
+    noSamples: "No sample records",
+    noProduction: "No production records",
+    noQuotations: "No quotation records",
+    noAttachments: "No attachments",
+    noAiReport: "No AI report"
   },
   id: {
     website: "Website",
@@ -62,7 +77,14 @@ const detailLabels = {
     delivered: "Terkirim",
     preparing: "Disiapkan",
     confirmSample: "Konfirmasi feel dan density",
-    sendTracking: "Kirim nomor resi"
+    sendTracking: "Kirim nomor resi",
+    noInquiries: "Belum ada inquiry",
+    noOrders: "Belum ada order",
+    noSamples: "Belum ada sampel",
+    noProduction: "Belum ada produksi",
+    noQuotations: "Belum ada quotation",
+    noAttachments: "Belum ada lampiran",
+    noAiReport: "Belum ada laporan AI"
   }
 } as const;
 
@@ -208,23 +230,27 @@ export default async function CustomerDetailPage({
         </TabsContent>
 
         <TabsContent value="inquiry">
-          <div className="grid gap-4 xl:grid-cols-2">
-            {inquiryRecords.map((inquiry) => (
-              <Link key={inquiry.id} href={`/${locale}/inquiries/${encodeURIComponent(inquiry.id)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Card className="h-full transition hover:border-primary/40 hover:shadow-soft">
-                  <CardHeader>
-                    <CardTitle>{inquiry.id}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <Info label={aiCopy.common.customer} value={inquiry.customer} />
-                    <Info label={labels.product} value={inquiry.product} />
-                    <Info label={labels.budget} value={inquiry.budget} />
-                    <Info label="AI" value={`${text(inquiry.aiKind, locale)} · ${inquiry.aiSpec} · ${inquiry.aiQuote}`} />
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          {inquiryRecords.length ? (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {inquiryRecords.map((inquiry) => (
+                <Link key={inquiry.id} href={`/${locale}/inquiries/${encodeURIComponent(inquiry.id)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Card className="h-full transition hover:border-primary/40 hover:shadow-soft">
+                    <CardHeader>
+                      <CardTitle>{inquiry.id}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <Info label={aiCopy.common.customer} value={inquiry.customer} />
+                      <Info label={labels.product} value={inquiry.product} />
+                      <Info label={labels.budget} value={inquiry.budget} />
+                      <Info label="AI" value={`${text(inquiry.aiKind, locale)} - ${inquiry.aiSpec} - ${inquiry.aiQuote}`} />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={Inbox} title={labels.noInquiries} />
+          )}
         </TabsContent>
 
         <TabsContent value="quotations">
@@ -233,99 +259,99 @@ export default async function CustomerDetailPage({
               <CardTitle>{copy.quotationRecords}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {quotations.map((quotation) => (
-                <div key={quotation.id} className="rounded-md border p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{quotation.quotation_no}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(quotation.created_at, "yyyy-MM-dd HH:mm", locale)}</p>
+              {quotations.length ? (
+                quotations.map((quotation) => (
+                  <div key={quotation.id} className="rounded-md border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{quotation.quotation_no}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(quotation.created_at, "yyyy-MM-dd HH:mm", locale)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatCurrency(quotation.total_amount, quotation.currency)}</p>
+                        <Badge variant="secondary">{dictionary.quotationStatuses[quotation.status]}</Badge>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{formatCurrency(quotation.total_amount, quotation.currency)}</p>
-                      <Badge variant="secondary">{dictionary.quotationStatuses[quotation.status]}</Badge>
+                    <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
+                      {quotationItems
+                        .filter((item) => item.quotation_id === quotation.id)
+                        .map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-2">
+                            <span>{item.product_name}</span>
+                            <span>{formatCurrency(item.amount, quotation.currency)}</span>
+                          </div>
+                        ))}
                     </div>
+                    <Button asChild variant="outline" size="sm" className="mt-3">
+                      <Link href={`/api/quotations/${quotation.id}/pdf`} target="_blank">
+                        <FileText />
+                        PDF
+                      </Link>
+                    </Button>
                   </div>
-                  <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-                    {quotationItems
-                      .filter((item) => item.quotation_id === quotation.id)
-                      .map((item) => (
-                        <div key={item.id} className="flex items-center justify-between gap-2">
-                          <span>{item.product_name}</span>
-                          <span>{formatCurrency(item.amount, quotation.currency)}</span>
-                        </div>
-                      ))}
-                  </div>
-                  <Button asChild variant="outline" size="sm" className="mt-3">
-                    <Link href={`/api/quotations/${quotation.id}/pdf`} target="_blank">
-                      <FileText />
-                      PDF
-                    </Link>
-                  </Button>
-                </div>
-              ))}
+                ))
+              ) : (
+                <EmptyState icon={FileText} title={labels.noQuotations} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="orders">
-          <div className="grid gap-4">
-            {orderRecords.map((order) => (
-              <Link key={order.id} href={`/${locale}/orders/${encodeURIComponent(order.id)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Card className="transition hover:border-primary/40 hover:shadow-soft">
-                  <CardHeader>
-                    <CardTitle>{order.id}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Info label={aiCopy.common.amount} value={formatCurrency(order.amount)} />
-                    <Info label={aiCopy.common.status} value={text(order.status, locale)} />
-                    <ProgressLine value={order.progress} label={aiCopy.common.progress} />
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          {orderRecords.length ? (
+            <div className="grid gap-4">
+              {orderRecords.map((order) => (
+                <Link key={order.id} href={`/${locale}/orders/${encodeURIComponent(order.id)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Card className="transition hover:border-primary/40 hover:shadow-soft">
+                    <CardHeader>
+                      <CardTitle>{order.id}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Info label={aiCopy.common.amount} value={formatCurrency(order.amount)} />
+                      <Info label={aiCopy.common.status} value={text(order.status, locale)} />
+                      <ProgressLine value={order.progress} label={aiCopy.common.progress} />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={ClipboardList} title={labels.noOrders} />
+          )}
         </TabsContent>
 
         <TabsContent value="samples">
-          <div className="grid gap-4 xl:grid-cols-3">
-            {["30D HR Foam sample", "Memory foam sheet", "Packaging sample"].map((sample, index) => (
-              <Card key={sample}>
-                <CardHeader>
-                  <CardTitle>{sample}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <Info label={aiCopy.common.status} value={index === 0 ? labels.delivered : labels.preparing} />
-                  <Info label={aiCopy.common.nextAction} value={index === 0 ? labels.confirmSample : labels.sendTracking} />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <EmptyState icon={PackageOpen} title={labels.noSamples} />
         </TabsContent>
 
         <TabsContent value="production">
-          <div className="grid gap-4">
-            {productionOrders.map((order) => (
-              <Link key={order.order} href={`/${locale}/production/${encodeURIComponent(order.order)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Card className="transition hover:border-primary/40 hover:shadow-soft">
-                  <CardHeader>
-                    <CardTitle>{order.order}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Info label={aiCopy.common.owner} value={order.owner} />
-                    <ProgressLine value={order.progress} label={aiCopy.common.progress} />
-                    <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-7">
-                      {order.stages.map((stage) => (
-                        <div key={stage.name} className="rounded-md border p-2 text-xs">
-                          <p className="font-medium">{stage.name}</p>
-                          <ProgressLine value={stage.progress} className="mt-2" />
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          {productionOrders.length ? (
+            <div className="grid gap-4">
+              {productionOrders.map((order) => (
+                <Link key={order.order} href={`/${locale}/production/${encodeURIComponent(order.order)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Card className="transition hover:border-primary/40 hover:shadow-soft">
+                    <CardHeader>
+                      <CardTitle>{order.order}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Info label={aiCopy.common.owner} value={order.owner} />
+                      <ProgressLine value={order.progress} label={aiCopy.common.progress} />
+                      <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-7">
+                        {order.stages.map((stage) => (
+                          <div key={stage.name} className="rounded-md border p-2 text-xs">
+                            <p className="font-medium">{stage.name}</p>
+                            <ProgressLine value={stage.progress} className="mt-2" />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={Factory} title={labels.noProduction} />
+          )}
         </TabsContent>
 
         <TabsContent value="finance">
@@ -345,17 +371,21 @@ export default async function CustomerDetailPage({
                 <CardTitle>{copy.customerAttachments}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {attachments.map((attachment) => (
-                  <a
-                    key={attachment.id}
-                    className="flex items-center justify-between rounded-md border p-3 text-sm hover:bg-muted"
-                    href={attachment.file_url}
-                    target="_blank"
-                  >
-                    <span>{attachment.file_name}</span>
-                    <Badge variant="secondary">{attachment.file_type}</Badge>
-                  </a>
-                ))}
+                {attachments.length ? (
+                  attachments.map((attachment) => (
+                    <a
+                      key={attachment.id}
+                      className="flex items-center justify-between rounded-md border p-3 text-sm hover:bg-muted"
+                      href={attachment.file_url}
+                      target="_blank"
+                    >
+                      <span>{attachment.file_name}</span>
+                      <Badge variant="secondary">{attachment.file_type}</Badge>
+                    </a>
+                  ))
+                ) : (
+                  <EmptyState icon={FileText} title={labels.noAttachments} />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -396,11 +426,15 @@ export default async function CustomerDetailPage({
                 <CardTitle>{c360.report}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {profile.aiReport.map((item) => (
-                  <div key={item.en} className="rounded-md border p-3 text-sm">
-                    {text(item, locale)}
-                  </div>
-                ))}
+                {profile.aiReport.length ? (
+                  profile.aiReport.map((item) => (
+                    <div key={item.en} className="rounded-md border p-3 text-sm">
+                      {text(item, locale)}
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState icon={Sparkles} title={labels.noAiReport} />
+                )}
               </CardContent>
             </Card>
           </div>

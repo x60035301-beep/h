@@ -146,17 +146,17 @@ export function CustomerImportDialog() {
     const sample = [
       templateHeaders.join(","),
       [
-        "PT Comfort Living Indonesia",
-        "Budi Santoso",
-        "Indonesia",
-        "Furniture",
+        "客户公司名称",
+        "联系人姓名",
+        "国家",
+        "行业",
         "manufacturer",
-        "+62 812 8800 1020",
-        "budi@example.com",
-        "WhatsApp",
-        "A",
-        "已报价",
-        "需要 30D 高回弹海绵样品"
+        "+62 ...",
+        "customer@example.com",
+        "Import",
+        "B",
+        "新询盘",
+        "填写客户真实需求"
       ].join(",")
     ].join("\n");
     const blob = new Blob(["\ufeff", sample], { type: "text/csv;charset=utf-8" });

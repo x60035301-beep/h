@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Camera, Clock, UserRound } from "lucide-react";
+import { Camera, Clock, Factory, UserRound } from "lucide-react";
 
 import { ProgressLine } from "@/components/ai-crm/progress-line";
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +10,9 @@ import { aiCrmCopy, productionOrders } from "@/data/ai-crm";
 import { defaultLocale, isLocale } from "@/lib/i18n";
 
 const labels = {
-  zh: { owner: "负责人", media: "图片/视频", start: "开始时间", end: "结束时间", remark: "备注", progress: "生产进度" },
-  en: { owner: "Owner", media: "Photo/video", start: "Start time", end: "End time", remark: "Remark", progress: "Production progress" },
-  id: { owner: "PIC", media: "Foto/video", start: "Mulai", end: "Selesai", remark: "Catatan", progress: "Progres produksi" }
+  zh: { owner: "负责人", media: "图片/视频", start: "开始时间", end: "结束时间", remark: "备注", progress: "生产进度", empty: "暂无生产数据", emptyDescription: "创建真实订单并进入生产后，这里会显示 Foaming、Curing、Cutting、CNC、Packaging、Shipping 的进度。" },
+  en: { owner: "Owner", media: "Photo/video", start: "Start time", end: "End time", remark: "Remark", progress: "Production progress", empty: "No production records", emptyDescription: "Production orders will appear here after real orders enter manufacturing." },
+  id: { owner: "PIC", media: "Foto/video", start: "Mulai", end: "Selesai", remark: "Catatan", progress: "Progres produksi", empty: "Belum ada data produksi", emptyDescription: "Order produksi akan muncul setelah order nyata masuk ke proses produksi." }
 } as const;
 
 export default async function ProductionPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -23,6 +24,8 @@ export default async function ProductionPage({ params }: { params: Promise<{ loc
   return (
     <div className="page-shell">
       <PageHeader title={copy.pages.production.title} description={copy.pages.production.description} />
+
+      {!productionOrders.length ? <EmptyState icon={Factory} title={page.empty} description={page.emptyDescription} /> : null}
 
       <section className="grid gap-4">
         {productionOrders.map((order) => (

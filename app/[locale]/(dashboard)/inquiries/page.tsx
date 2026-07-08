@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { FileImage, FileText, Sparkles, Video } from "lucide-react";
+import { FileImage, FileText, Inbox, Sparkles, Video } from "lucide-react";
 
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +9,9 @@ import { aiCrmCopy, inquiryRecords, text } from "@/data/ai-crm";
 import { defaultLocale, isLocale } from "@/lib/i18n";
 
 const labels = {
-  zh: { budget: "客户预算", purchaseTime: "预计采购时间", competitor: "竞争对手", aiKind: "AI 识别", aiSpec: "推荐规格", aiQuote: "推荐报价", attachments: "附件" },
-  en: { budget: "Budget", purchaseTime: "Purchase time", competitor: "Competitor", aiKind: "AI recognition", aiSpec: "Recommended spec", aiQuote: "Suggested quote", attachments: "Files" },
-  id: { budget: "Budget", purchaseTime: "Waktu beli", competitor: "Kompetitor", aiKind: "AI recognition", aiSpec: "Spesifikasi rekomendasi", aiQuote: "Harga rekomendasi", attachments: "File" }
+  zh: { budget: "客户预算", purchaseTime: "预计采购时间", competitor: "竞争对手", aiKind: "AI 识别", aiSpec: "推荐规格", aiQuote: "推荐报价", attachments: "附件", empty: "暂无询盘数据", emptyDescription: "添加真实询盘后，这里会显示图片、视频、PDF、CAD、预算、竞争对手和 AI 推荐结果。" },
+  en: { budget: "Budget", purchaseTime: "Purchase time", competitor: "Competitor", aiKind: "AI recognition", aiSpec: "Recommended spec", aiQuote: "Suggested quote", attachments: "Files", empty: "No inquiries", emptyDescription: "Add real inquiries to show files, budgets, competitors, and AI recommendations." },
+  id: { budget: "Budget", purchaseTime: "Waktu beli", competitor: "Kompetitor", aiKind: "AI recognition", aiSpec: "Spesifikasi rekomendasi", aiQuote: "Harga rekomendasi", attachments: "File", empty: "Belum ada inquiry", emptyDescription: "Tambahkan inquiry nyata untuk menampilkan file, budget, kompetitor, dan rekomendasi AI." }
 } as const;
 
 const fileIcons = {
@@ -29,6 +30,8 @@ export default async function InquiriesPage({ params }: { params: Promise<{ loca
   return (
     <div className="page-shell">
       <PageHeader title={copy.pages.inquiries.title} description={copy.pages.inquiries.description} />
+
+      {!inquiryRecords.length ? <EmptyState icon={Inbox} title={page.empty} description={page.emptyDescription} /> : null}
 
       <section className="grid gap-4 xl:grid-cols-2">
         {inquiryRecords.map((inquiry) => (

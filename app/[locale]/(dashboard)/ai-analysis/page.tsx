@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { BrainCircuit, CalendarClock, ShieldAlert, Sparkles, type LucideIcon } from "lucide-react";
+import { BrainCircuit, CalendarClock, Database, ShieldAlert, Sparkles, type LucideIcon } from "lucide-react";
 
 import { CustomerAiPanel } from "@/components/ai-crm/customer-ai-panel";
 import { ProgressLine } from "@/components/ai-crm/progress-line";
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +11,9 @@ import { aiCrmCopy, aiScoreCards, customer360Profiles, text } from "@/data/ai-cr
 import { defaultLocale, isLocale } from "@/lib/i18n";
 
 const labels = {
-  zh: { valueAnalysis: "客户价值分析", recommendedTime: "推荐跟进时间", summary: "AI 自动总结", report: "AI 分析报告", strategy: "推荐销售策略" },
-  en: { valueAnalysis: "Customer value analysis", recommendedTime: "Recommended follow-up time", summary: "AI summary", report: "AI report", strategy: "Recommended sales strategy" },
-  id: { valueAnalysis: "Analisis nilai pelanggan", recommendedTime: "Waktu follow-up rekomendasi", summary: "Ringkasan AI", report: "Laporan AI", strategy: "Strategi rekomendasi" }
+  zh: { valueAnalysis: "客户价值分析", recommendedTime: "推荐跟进时间", summary: "AI 自动总结", report: "AI 分析报告", strategy: "推荐销售策略", empty: "暂无 AI 客户分析", emptyDescription: "添加真实客户、询盘、报价、跟进和订单后，可点击 AI 重新分析生成客户评分与销售建议。" },
+  en: { valueAnalysis: "Customer value analysis", recommendedTime: "Recommended follow-up time", summary: "AI summary", report: "AI report", strategy: "Recommended sales strategy", empty: "No AI customer analysis", emptyDescription: "Add real customers, inquiries, quotations, follow-ups, and orders before running AI analysis." },
+  id: { valueAnalysis: "Analisis nilai pelanggan", recommendedTime: "Waktu follow-up rekomendasi", summary: "Ringkasan AI", report: "Laporan AI", strategy: "Strategi rekomendasi", empty: "Belum ada analisis AI", emptyDescription: "Tambahkan pelanggan, inquiry, quotation, follow-up, dan order nyata sebelum menjalankan analisis AI." }
 } as const;
 
 export default async function AiAnalysisPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -25,6 +26,8 @@ export default async function AiAnalysisPage({ params }: { params: Promise<{ loc
   return (
     <div className="page-shell">
       <PageHeader title={copy.pages.aiAnalysis.title} description={copy.pages.aiAnalysis.description} />
+
+      {!aiScoreCards.length ? <EmptyState icon={Database} title={page.empty} description={page.emptyDescription} /> : null}
 
       <section className="grid gap-4 xl:grid-cols-3">
         {aiScoreCards.map((item) => (
@@ -60,49 +63,53 @@ export default async function AiAnalysisPage({ params }: { params: Promise<{ loc
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_420px]">
-        <Card>
-          <CardHeader>
-            <CardTitle>{page.summary}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="success">{copy.common.score} {profile.aiScore}</Badge>
-              <Badge variant="secondary">{copy.common.probability} {profile.winProbability}%</Badge>
-              <Badge variant="warning">{copy.common.risk} {profile.churnRisk}%</Badge>
-              <Badge variant="outline">{copy.common.aiReserved}</Badge>
-            </div>
-            <p className="text-sm leading-6 text-muted-foreground">{text(profile.aiSummary, locale)}</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <InfoCard icon={Sparkles} label={copy.customer360.ltv} value={profile.ltv} />
-              <InfoCard icon={ShieldAlert} label={copy.customer360.profitMargin} value={profile.profitMargin} />
-              <InfoCard icon={CalendarClock} label={copy.customer360.purchaseCycle} value={profile.purchaseCycle} />
-            </div>
-          </CardContent>
-        </Card>
+      {aiScoreCards.length ? (
+        <>
+          <section className="grid gap-4 xl:grid-cols-[1fr_420px]">
+            <Card>
+              <CardHeader>
+                <CardTitle>{page.summary}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="success">{copy.common.score} {profile.aiScore}</Badge>
+                  <Badge variant="secondary">{copy.common.probability} {profile.winProbability}%</Badge>
+                  <Badge variant="warning">{copy.common.risk} {profile.churnRisk}%</Badge>
+                  <Badge variant="outline">{copy.common.aiReserved}</Badge>
+                </div>
+                <p className="text-sm leading-6 text-muted-foreground">{text(profile.aiSummary, locale)}</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <InfoCard icon={Sparkles} label={copy.customer360.ltv} value={profile.ltv} />
+                  <InfoCard icon={ShieldAlert} label={copy.customer360.profitMargin} value={profile.profitMargin} />
+                  <InfoCard icon={CalendarClock} label={copy.customer360.purchaseCycle} value={profile.purchaseCycle} />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{page.report}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {profile.aiReport.map((item) => (
-              <div key={item.en} className="rounded-md border p-3 text-sm">
-                {text(item, locale)}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
+            <Card>
+              <CardHeader>
+                <CardTitle>{page.report}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {profile.aiReport.map((item) => (
+                  <div key={item.en} className="rounded-md border p-3 text-sm">
+                    {text(item, locale)}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
 
-      <CustomerAiPanel
-        locale={locale}
-        customer={{
-          company: aiScoreCards[0]?.customer,
-          profile,
-          currentScores: aiScoreCards[0]
-        }}
-      />
+          <CustomerAiPanel
+            locale={locale}
+            customer={{
+              company: aiScoreCards[0]?.customer,
+              profile,
+              currentScores: aiScoreCards[0]
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

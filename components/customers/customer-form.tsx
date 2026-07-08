@@ -73,7 +73,7 @@ export function CustomerForm({
     <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="公司名称" error={form.formState.errors.company_name?.message}>
-          <Input {...form.register("company_name")} placeholder="PT Comfort Living" />
+          <Input {...form.register("company_name")} placeholder="客户公司名称" />
         </Field>
         <Field label="联系人">
           <Input {...form.register("contact_name")} placeholder="Budi Santoso" />

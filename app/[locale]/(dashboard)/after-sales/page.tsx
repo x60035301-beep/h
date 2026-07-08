@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ImageIcon, MessageSquareWarning, Star, Video, type LucideIcon } from "lucide-react";
 
 import { ProgressLine } from "@/components/ai-crm/progress-line";
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +10,9 @@ import { afterSalesCases, afterSalesMedia, aiCrmCopy, text } from "@/data/ai-crm
 import { defaultLocale, isLocale } from "@/lib/i18n";
 
 const labels = {
-  zh: { issue: "问题", solution: "解决方案", satisfaction: "满意度", timeline: "售后时间轴", media: "图片", video: "视频" },
-  en: { issue: "Issue", solution: "Solution", satisfaction: "Satisfaction", timeline: "After-sales timeline", media: "Images", video: "Videos" },
-  id: { issue: "Masalah", solution: "Solusi", satisfaction: "Kepuasan", timeline: "Timeline after sales", media: "Gambar", video: "Video" }
+  zh: { issue: "问题", solution: "解决方案", satisfaction: "满意度", timeline: "售后时间轴", media: "图片", video: "视频", empty: "暂无售后数据", emptyDescription: "创建真实投诉、质量问题、退货或赔偿记录后，这里会显示售后处理和媒体证据。" },
+  en: { issue: "Issue", solution: "Solution", satisfaction: "Satisfaction", timeline: "After-sales timeline", media: "Images", video: "Videos", empty: "No after-sales records", emptyDescription: "Real complaints, quality issues, returns, and compensation cases will appear here." },
+  id: { issue: "Masalah", solution: "Solusi", satisfaction: "Kepuasan", timeline: "Timeline after sales", media: "Gambar", video: "Video", empty: "Belum ada after sales", emptyDescription: "Komplain, masalah kualitas, retur, dan kompensasi nyata akan muncul di sini." }
 } as const;
 
 export default async function AfterSalesPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -23,6 +24,8 @@ export default async function AfterSalesPage({ params }: { params: Promise<{ loc
   return (
     <div className="page-shell">
       <PageHeader title={copy.pages.afterSales.title} description={copy.pages.afterSales.description} />
+
+      {!afterSalesCases.length ? <EmptyState icon={MessageSquareWarning} title={page.empty} description={page.emptyDescription} /> : null}
 
       <section className="grid gap-4 xl:grid-cols-2">
         {afterSalesCases.map((item) => {

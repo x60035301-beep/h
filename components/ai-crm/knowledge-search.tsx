@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Loader2, Search, Sparkles } from "lucide-react";
 
+import { EmptyState } from "@/components/layout/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,7 @@ type KnowledgeAnswer = {
 };
 
 const askCopy = {
-  zh: { title: "AI 知识库问答", placeholder: "例如：客户问 30D 海绵为什么比别人贵，怎么回复？", button: "问 AI", empty: "请输入问题", failed: "AI 问答失败", references: "引用", actions: "建议动作" },
+  zh: { title: "AI 知识库问答", placeholder: "例如：客户问 30D 海绵为什么比别人贵，怎么回复？", button: "问 AI", empty: "请输入问题", failed: "AI 问答失败", references: "引用", actions: "建议动作", noItems: "暂无知识库条目", noItemsDescription: "添加产品知识、报价模板、物流、售后和 FAQ 后，AI 才能引用真实内容回答。" },
   en: { title: "AI Knowledge Q&A", placeholder: "Example: how should I reply when a customer asks why 30D foam is more expensive?", button: "Ask AI", empty: "Enter a question", failed: "AI answer failed", references: "References", actions: "Suggested actions" },
   id: { title: "Tanya Knowledge AI", placeholder: "Contoh: bagaimana menjawab customer yang tanya kenapa spons 30D lebih mahal?", button: "Tanya AI", empty: "Tulis pertanyaan", failed: "Jawaban AI gagal", references: "Referensi", actions: "Aksi disarankan" }
 } as const;
@@ -99,40 +100,48 @@ export function KnowledgeSearch({ locale }: { locale: Locale }) {
           ) : null}
         </CardContent>
       </Card>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {items.map((item) => (
-          <Link
-            key={`${item.category.en}-${item.title}`}
-            href={`/${locale}/knowledge-base/${encodeURIComponent(item.title)}`}
-            className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Card className="h-full transition hover:border-primary/40 hover:shadow-soft">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="flex size-9 items-center justify-center rounded-md bg-accent text-accent-foreground">
-                      <BookOpen className="size-4" />
-                    </span>
-                    <div>
-                      <CardTitle className="text-sm">{item.title}</CardTitle>
-                      <p className="mt-1 text-xs text-muted-foreground">{text(item.category, locale)}</p>
+      {items.length ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {items.map((item) => (
+            <Link
+              key={`${item.category.en}-${item.title}`}
+              href={`/${locale}/knowledge-base/${encodeURIComponent(item.title)}`}
+              className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Card className="h-full transition hover:border-primary/40 hover:shadow-soft">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-9 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                        <BookOpen className="size-4" />
+                      </span>
+                      <div>
+                        <CardTitle className="text-sm">{item.title}</CardTitle>
+                        <p className="mt-1 text-xs text-muted-foreground">{text(item.category, locale)}</p>
+                      </div>
                     </div>
+                    <Badge variant="secondary">{copy.aiReady}</Badge>
                   </div>
-                  <Badge variant="secondary">{copy.aiReady}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {item.tags.map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    {tag}
-                  </Badge>
-                ))}
-                <span className="ml-auto text-xs text-muted-foreground">{item.updated}</span>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  {item.tags.map((tag) => (
+                    <Badge key={tag} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                  <span className="ml-auto text-xs text-muted-foreground">{item.updated}</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={BookOpen}
+          title={"noItems" in aiText ? aiText.noItems : "No knowledge articles"}
+          description={"noItemsDescription" in aiText ? aiText.noItemsDescription : "Add real knowledge articles before using AI references."}
+        />
+      )}
     </div>
   );
 }

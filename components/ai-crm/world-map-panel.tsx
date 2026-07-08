@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapPin } from "lucide-react";
+import { Globe2, MapPin } from "lucide-react";
 
+import { EmptyState } from "@/components/layout/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { worldMapCountries } from "@/data/ai-crm";
@@ -10,18 +11,22 @@ import { formatCurrency } from "@/lib/utils";
 import type { Locale } from "@/types/crm";
 
 const labels = {
-  zh: { customers: "客户数量", orders: "订单数量", sales: "销售额", rate: "成交率", ranking: "国家排行" },
-  en: { customers: "Customers", orders: "Orders", sales: "Sales", rate: "Conversion", ranking: "Country ranking" },
-  id: { customers: "Pelanggan", orders: "Order", sales: "Sales", rate: "Konversi", ranking: "Ranking negara" }
+  zh: { customers: "客户数量", orders: "订单数量", sales: "销售额", rate: "成交率", ranking: "国家排行", empty: "暂无国家数据", emptyDescription: "添加真实客户国家和订单后，世界地图会自动显示国家分布和销售数据。" },
+  en: { customers: "Customers", orders: "Orders", sales: "Sales", rate: "Conversion", ranking: "Country ranking", empty: "No country data", emptyDescription: "Add real customer countries and orders to populate the world map." },
+  id: { customers: "Pelanggan", orders: "Order", sales: "Sales", rate: "Konversi", ranking: "Ranking negara", empty: "Belum ada data negara", emptyDescription: "Tambahkan negara pelanggan dan order nyata untuk mengisi peta dunia." }
 } as const;
 
 export function WorldMapPanel({ locale }: { locale: Locale }) {
-  const [selectedCode, setSelectedCode] = useState<string>(worldMapCountries[0].code);
+  const [selectedCode, setSelectedCode] = useState<string>(() => worldMapCountries[0]?.code ?? "");
   const copy = labels[locale];
   const selected = useMemo(
-    () => worldMapCountries.find((country) => country.code === selectedCode) ?? worldMapCountries[0],
+    () => worldMapCountries.find((country) => country.code === selectedCode) ?? worldMapCountries[0] ?? null,
     [selectedCode]
   );
+
+  if (!selected) {
+    return <EmptyState icon={Globe2} title={copy.empty} description={copy.emptyDescription} />;
+  }
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
