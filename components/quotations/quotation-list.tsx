@@ -114,7 +114,7 @@ export function QuotationList({
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="font-medium">{formatCurrency(quotation.total_amount, quotation.currency)}</span>
-                      <span className="text-xs text-muted-foreground">{getCurrencyLabel(quotation.currency)}</span>
+                      <span className="text-xs text-muted-foreground">{getCurrencyLabel(quotation.currency, locale)}</span>
                     </div>
                   </TableCell>
                   <TableCell>{quotation.valid_until ?? "-"}</TableCell>

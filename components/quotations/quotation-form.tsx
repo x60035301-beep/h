@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { currencies } from "@/lib/currencies";
+import { currencies, getCurrencyName } from "@/lib/currencies";
 import { formatCurrency } from "@/lib/utils";
 import { quotationSchema, type QuotationInput } from "@/lib/validations";
 import type { CustomerSummary, Locale, Product } from "@/types/crm";
@@ -41,6 +41,81 @@ const aiCopy = {
   id: { button: "Saran AI", loading: "Menganalisis", title: "Saran penawaran AI", failed: "Saran AI gagal", cost: "Struktur biaya", margin: "Margin disarankan", risk: "Risiko", message: "Balasan customer" }
 } as const;
 
+const formCopy = {
+  zh: {
+    customer: "客户",
+    selectCustomer: "选择客户",
+    currency: "币种",
+    selectCurrency: "选择币种",
+    itemDetails: "产品明细",
+    addItem: "新增明细",
+    product: "产品",
+    productName: "产品名称",
+    quantity: "数量",
+    unitPrice: "单价",
+    validUntil: "有效期",
+    notes: "备注",
+    notesPlaceholder: "FOB、MOQ、交期...",
+    autoAmount: "自动计算金额",
+    create: "创建报价",
+    createFailed: "报价创建失败",
+    createSuccess: "报价单已创建",
+    tryAgain: "请稍后再试。",
+    material: "材料",
+    labor: "人工",
+    packing: "包装",
+    freight: "运费"
+  },
+  en: {
+    customer: "Customer",
+    selectCustomer: "Select customer",
+    currency: "Currency",
+    selectCurrency: "Select currency",
+    itemDetails: "Line items",
+    addItem: "Add item",
+    product: "Product",
+    productName: "Product name",
+    quantity: "Qty",
+    unitPrice: "Unit price",
+    validUntil: "Valid until",
+    notes: "Notes",
+    notesPlaceholder: "FOB, MOQ, lead time...",
+    autoAmount: "Auto calculated amount",
+    create: "Create quotation",
+    createFailed: "Quotation create failed",
+    createSuccess: "Quotation created",
+    tryAgain: "Please try again.",
+    material: "Material",
+    labor: "Labor",
+    packing: "Packing",
+    freight: "Freight"
+  },
+  id: {
+    customer: "Pelanggan",
+    selectCustomer: "Pilih pelanggan",
+    currency: "Mata uang",
+    selectCurrency: "Pilih mata uang",
+    itemDetails: "Detail produk",
+    addItem: "Tambah item",
+    product: "Produk",
+    productName: "Nama produk",
+    quantity: "Qty",
+    unitPrice: "Harga satuan",
+    validUntil: "Berlaku sampai",
+    notes: "Catatan",
+    notesPlaceholder: "FOB, MOQ, lead time...",
+    autoAmount: "Jumlah otomatis",
+    create: "Buat quotation",
+    createFailed: "Gagal membuat quotation",
+    createSuccess: "Quotation dibuat",
+    tryAgain: "Silakan coba lagi.",
+    material: "Material",
+    labor: "Tenaga kerja",
+    packing: "Packing",
+    freight: "Ongkir"
+  }
+} as const;
+
 export function QuotationForm({
   locale,
   customers,
@@ -57,6 +132,7 @@ export function QuotationForm({
   const [aiLoading, setAiLoading] = useState(false);
   const [advice, setAdvice] = useState<QuotationAdvice | null>(null);
   const aiText = aiCopy[locale];
+  const copy = formCopy[locale];
   const form = useForm<QuotationInput>({
     resolver: zodResolver(quotationSchema) as any,
     defaultValues: {
@@ -84,11 +160,11 @@ export function QuotationForm({
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      toast({ title: "报价创建失败", description: payload?.error ?? "Please try again.", variant: "destructive" });
+      toast({ title: copy.createFailed, description: payload?.error ?? copy.tryAgain, variant: "destructive" });
       return;
     }
 
-    toast({ title: "报价单已创建" });
+    toast({ title: copy.createSuccess });
     onSaved?.();
     router.refresh();
   }
@@ -135,10 +211,10 @@ export function QuotationForm({
     <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="grid gap-2 sm:col-span-2">
-          <Label>客户</Label>
+          <Label>{copy.customer}</Label>
           <Select value={form.watch("customer_id")} onValueChange={(value) => form.setValue("customer_id", value)}>
             <SelectTrigger>
-              <SelectValue placeholder="选择客户" />
+              <SelectValue placeholder={copy.selectCustomer} />
             </SelectTrigger>
             <SelectContent>
               {customers.map((customer) => (
@@ -150,10 +226,10 @@ export function QuotationForm({
           </Select>
         </div>
         <div className="grid gap-2">
-          <Label>币种</Label>
+          <Label>{copy.currency}</Label>
           <Select value={currency} onValueChange={(value) => form.setValue("currency", value as QuotationInput["currency"])}>
             <SelectTrigger>
-              <SelectValue placeholder="选择币种" />
+              <SelectValue placeholder={copy.selectCurrency} />
             </SelectTrigger>
             <SelectContent>
               {currencies.map((item) => (
@@ -161,7 +237,7 @@ export function QuotationForm({
                   <span className="flex items-center gap-2">
                     <span className="w-10 font-medium">{item.code}</span>
                     <span className="text-muted-foreground">{item.symbol}</span>
-                    <span>{item.name}</span>
+                    <span>{getCurrencyName(item.code, locale)}</span>
                   </span>
                 </SelectItem>
               ))}
@@ -172,7 +248,7 @@ export function QuotationForm({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>产品明细</Label>
+          <Label>{copy.itemDetails}</Label>
           <Button
             type="button"
             variant="outline"
@@ -180,7 +256,7 @@ export function QuotationForm({
             onClick={() => append({ product_id: null, product_name: "", quantity: 1, unit_price: 0, notes: "" })}
           >
             <Plus />
-            Add item
+            {copy.addItem}
           </Button>
         </div>
         {fields.map((field, index) => {
@@ -189,7 +265,7 @@ export function QuotationForm({
             <div key={field.id} className="grid gap-3 rounded-lg border p-3 lg:grid-cols-[1.3fr_1fr_120px_120px_120px_40px]">
               <Select value={items[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="产品" />
+                  <SelectValue placeholder={copy.product} />
                 </SelectTrigger>
                 <SelectContent>
                   {products.map((product) => (
@@ -199,9 +275,9 @@ export function QuotationForm({
                   ))}
                 </SelectContent>
               </Select>
-              <Input {...form.register(`items.${index}.product_name`)} placeholder="Product name" />
-              <Input type="number" step="0.01" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder="Qty" />
-              <Input type="number" step="0.01" {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })} placeholder="Unit price" />
+              <Input {...form.register(`items.${index}.product_name`)} placeholder={copy.productName} />
+              <Input type="number" step="0.01" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder={copy.quantity} />
+              <Input type="number" step="0.01" {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })} placeholder={copy.unitPrice} />
               <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium">{formatCurrency(amount, currency)}</div>
               <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
                 <Trash2 />
@@ -213,17 +289,17 @@ export function QuotationForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>有效期</Label>
+          <Label>{copy.validUntil}</Label>
           <Input type="date" {...form.register("valid_until")} />
         </div>
         <div className="grid gap-2">
-          <Label>备注</Label>
-          <Textarea className="min-h-9" {...form.register("notes")} placeholder="FOB, MOQ, lead time..." />
+          <Label>{copy.notes}</Label>
+          <Textarea className="min-h-9" {...form.register("notes")} placeholder={copy.notesPlaceholder} />
         </div>
       </div>
 
       <div className="flex items-center justify-between rounded-lg bg-muted p-3">
-        <span className="text-sm text-muted-foreground">自动计算金额</span>
+        <span className="text-sm text-muted-foreground">{copy.autoAmount}</span>
         <span className="text-lg font-semibold">{formatCurrency(total, currency)}</span>
       </div>
 
@@ -241,10 +317,10 @@ export function QuotationForm({
         {advice ? (
           <div className="mt-4 grid gap-3">
             <div className="grid gap-2 sm:grid-cols-5">
-              <AdviceMetric label="Material" value={`${advice.materialCostRatio}%`} />
-              <AdviceMetric label="Labor" value={`${advice.laborCostRatio}%`} />
-              <AdviceMetric label="Packing" value={`${advice.packingCostRatio}%`} />
-              <AdviceMetric label="Freight" value={`${advice.freightCostRatio}%`} />
+              <AdviceMetric label={copy.material} value={`${advice.materialCostRatio}%`} />
+              <AdviceMetric label={copy.labor} value={`${advice.laborCostRatio}%`} />
+              <AdviceMetric label={copy.packing} value={`${advice.packingCostRatio}%`} />
+              <AdviceMetric label={copy.freight} value={`${advice.freightCostRatio}%`} />
               <AdviceMetric label={aiText.margin} value={`${advice.suggestedMargin}%`} />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
@@ -269,7 +345,7 @@ export function QuotationForm({
 
       <Button type="submit" disabled={loading || !customers.length}>
         {loading ? <Loader2 className="animate-spin" /> : null}
-        创建报价
+        {copy.create}
       </Button>
     </form>
   );
