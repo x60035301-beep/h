@@ -25,13 +25,13 @@ import {
   aiCrmCopy,
   customer360Profiles,
   inquiryRecords,
-  orderRecords,
   productionOrders,
   text
 } from "@/data/ai-crm";
 import { getCustomerDetail } from "@/data/queries";
 import { getDictionary } from "@/lib/dictionaries";
 import { defaultLocale, isLocale } from "@/lib/i18n";
+import { buildOrderRecords } from "@/lib/order-records";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 const detailLabels = {
@@ -102,6 +102,7 @@ export default async function CustomerDetailPage({
   const labels = detailLabels[locale];
   const profile = customer360Profiles.default;
   const { customer, contacts, followups, quotations, quotationItems, attachments } = await getCustomerDetail(id);
+  const orderRecords = buildOrderRecords(quotations, [customer]);
 
   return (
     <div className="page-shell">
@@ -307,7 +308,7 @@ export default async function CustomerDetailPage({
                       <CardTitle>{order.id}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <Info label={aiCopy.common.amount} value={formatCurrency(order.amount)} />
+                      <Info label={aiCopy.common.amount} value={formatCurrency(order.amount, order.currency)} />
                       <Info label={aiCopy.common.status} value={text(order.status, locale)} />
                       <ProgressLine value={order.progress} label={aiCopy.common.progress} />
                     </CardContent>

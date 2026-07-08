@@ -4,10 +4,13 @@ import { ArrowRight, ClipboardList, Eye } from "lucide-react";
 import { ProgressLine, StageRail } from "@/components/ai-crm/progress-line";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
+import { OrderCreateDialog } from "@/components/orders/order-create-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { aiCrmCopy, orderRecords, text } from "@/data/ai-crm";
+import { aiCrmCopy, text } from "@/data/ai-crm";
+import { getCustomers, getQuotations } from "@/data/queries";
 import { defaultLocale, isLocale } from "@/lib/i18n";
+import { buildOrderRecords } from "@/lib/order-records";
 import { formatCurrency } from "@/lib/utils";
 
 const labels = {
@@ -21,10 +24,17 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
   const locale = isLocale(localeParam) ? localeParam : defaultLocale;
   const copy = aiCrmCopy[locale];
   const page = labels[locale];
+  const [quotations, customers] = await Promise.all([getQuotations(), getCustomers()]);
+  const orderRecords = buildOrderRecords(quotations, customers);
+  const creatableQuotations = quotations.filter((quotation) => quotation.status !== "rejected" && quotation.status !== "expired");
 
   return (
     <div className="page-shell">
-      <PageHeader title={copy.pages.orders.title} description={copy.pages.orders.description} />
+      <PageHeader
+        title={copy.pages.orders.title}
+        description={copy.pages.orders.description}
+        actions={<OrderCreateDialog locale={locale} quotations={creatableQuotations} customers={customers} />}
+      />
 
       {!orderRecords.length ? <EmptyState icon={ClipboardList} title={page.empty} description={page.emptyDescription} /> : null}
 
@@ -39,7 +49,7 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
                 </div>
                 <div className="flex flex-wrap items-start justify-end gap-3">
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(order.amount)}</p>
+                    <p className="font-semibold">{formatCurrency(order.amount, order.currency)}</p>
                     <p className="text-xs text-muted-foreground">{text(order.status, locale)}</p>
                   </div>
                   <Button asChild>

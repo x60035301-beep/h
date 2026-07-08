@@ -5,8 +5,10 @@ import { ArrowLeft } from "lucide-react";
 import { PaymentWorkspace } from "@/components/finance/payment-workspace";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { orderRecords, text } from "@/data/ai-crm";
+import { text } from "@/data/ai-crm";
+import { getCustomers, getQuotations } from "@/data/queries";
 import { defaultLocale, isLocale } from "@/lib/i18n";
+import { findOrderRecord } from "@/lib/order-records";
 
 const copy = {
   zh: {
@@ -34,7 +36,8 @@ export default async function OrderPaymentPage({
   const { locale: localeParam, id } = await params;
   const locale = isLocale(localeParam) ? localeParam : defaultLocale;
   const orderId = decodeURIComponent(id);
-  const order = orderRecords.find((item) => item.id === orderId);
+  const [quotations, customers] = await Promise.all([getQuotations(), getCustomers()]);
+  const order = findOrderRecord(orderId, quotations, customers);
   if (!order) notFound();
   const page = copy[locale];
 

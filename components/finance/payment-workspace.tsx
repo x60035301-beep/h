@@ -25,6 +25,7 @@ type FinanceOrder = {
   customer: string;
   quotation: string;
   amount: number;
+  currency?: string;
   progress: number;
 };
 
@@ -126,6 +127,7 @@ const copy = {
 
 export function PaymentWorkspace({ locale, order }: { locale: Locale; order: FinanceOrder }) {
   const page = copy[locale];
+  const currency = order.currency ?? "USD";
   const today = new Date().toISOString().slice(0, 10);
   const initialDeposit = order.progress > 50 ? Math.round(order.amount * 0.3 * 100) / 100 : 0;
   const [paymentNo, setPaymentNo] = useState(`PAY-${order.id.replace("ORD-", "")}`);
@@ -175,7 +177,7 @@ export function PaymentWorkspace({ locale, order }: { locale: Locale; order: Fin
     setPaymentAmount(Math.max(balance - amount, 0));
     setReference("");
     setProof("");
-    toast({ title: page.saved, description: `${formatCurrency(amount)} · ${payer}` });
+    toast({ title: page.saved, description: `${formatCurrency(amount, currency)} · ${payer}` });
   }
 
   function markFullyPaid() {
@@ -192,7 +194,7 @@ export function PaymentWorkspace({ locale, order }: { locale: Locale; order: Fin
       }
     ]);
     setPaymentAmount(0);
-    toast({ title: page.completed, description: formatCurrency(order.amount) });
+    toast({ title: page.completed, description: formatCurrency(order.amount, currency) });
   }
 
   return (
@@ -203,9 +205,9 @@ export function PaymentWorkspace({ locale, order }: { locale: Locale; order: Fin
           <Badge variant={balance <= 0 ? "default" : "secondary"}>{status}</Badge>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Metric label={page.receivable} value={formatCurrency(order.amount)} />
-          <Metric label={page.received} value={formatCurrency(received)} />
-          <Metric label={page.balance} value={formatCurrency(balance)} strong />
+          <Metric label={page.receivable} value={formatCurrency(order.amount, currency)} />
+          <Metric label={page.received} value={formatCurrency(received, currency)} />
+          <Metric label={page.balance} value={formatCurrency(balance, currency)} strong />
           <div>
             <div className="mb-2 flex justify-between text-sm">
               <span className="text-muted-foreground">{page.rate}</span>
@@ -297,7 +299,7 @@ export function PaymentWorkspace({ locale, order }: { locale: Locale; order: Fin
                   <p className="text-sm text-muted-foreground">{record.date} · {record.method}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{record.reference}</p>
                 </div>
-                <div className="font-semibold">{formatCurrency(record.amount)}</div>
+                <div className="font-semibold">{formatCurrency(record.amount, currency)}</div>
                 <Badge variant="secondary" className="w-fit">
                   <ReceiptText className="mr-1 size-3" />
                   {record.proof ?? page.noProof}
@@ -313,7 +315,7 @@ export function PaymentWorkspace({ locale, order }: { locale: Locale; order: Fin
             {balance > 0 ? (
               <Button variant="outline" onClick={() => setPaymentAmount(balance)}>
                 <Plus className="size-4" />
-                {formatCurrency(balance)}
+                {formatCurrency(balance, currency)}
               </Button>
             ) : null}
           </CardContent>

@@ -25,6 +25,7 @@ type FinanceOrder = {
   customer: string;
   quotation: string;
   amount: number;
+  currency?: string;
 };
 
 const copy = {
@@ -143,6 +144,7 @@ const copy = {
 
 export function InvoiceWorkspace({ locale, order }: { locale: Locale; order: FinanceOrder }) {
   const page = copy[locale];
+  const currency = order.currency ?? "USD";
   const today = new Date().toISOString().slice(0, 10);
   const [invoiceNo, setInvoiceNo] = useState(`INV-${order.id.replace("ORD-", "")}`);
   const [invoiceDate, setInvoiceDate] = useState(today);
@@ -168,7 +170,7 @@ export function InvoiceWorkspace({ locale, order }: { locale: Locale; order: Fin
 
   function saveInvoice(nextStatus = status) {
     setStatus(nextStatus);
-    toast({ title: page.saved, description: `${invoiceNo} · ${formatCurrency(total)}` });
+    toast({ title: page.saved, description: `${invoiceNo} · ${formatCurrency(total, currency)}` });
   }
 
   async function copyInvoiceNo() {
@@ -298,12 +300,12 @@ export function InvoiceWorkspace({ locale, order }: { locale: Locale; order: Fin
           <div className="rounded-lg border p-4 text-sm">
             <div className="flex justify-between gap-3">
               <span>{productName}</span>
-              <span className="font-medium">{formatCurrency(subtotal)}</span>
+              <span className="font-medium">{formatCurrency(subtotal, currency)}</span>
             </div>
             <div className="mt-4 space-y-2 border-t pt-4">
-              <Preview label={page.subtotal} value={formatCurrency(subtotal)} />
-              <Preview label={page.tax} value={formatCurrency(tax)} />
-              <Preview label={page.total} value={formatCurrency(total)} strong />
+              <Preview label={page.subtotal} value={formatCurrency(subtotal, currency)} />
+              <Preview label={page.tax} value={formatCurrency(tax, currency)} />
+              <Preview label={page.total} value={formatCurrency(total, currency)} strong />
             </div>
           </div>
 

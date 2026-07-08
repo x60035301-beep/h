@@ -7,8 +7,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { aiCrmCopy, orderRecords, productionOrders, text } from "@/data/ai-crm";
+import { aiCrmCopy, productionOrders, text } from "@/data/ai-crm";
+import { getCustomers, getQuotations } from "@/data/queries";
 import { defaultLocale, isLocale } from "@/lib/i18n";
+import { findOrderRecord, type CrmOrderRecord } from "@/lib/order-records";
 import { formatCurrency } from "@/lib/utils";
 
 const labels = {
@@ -105,7 +107,8 @@ export default async function OrderDetailPage({
   const copy = aiCrmCopy[locale];
   const page = labels[locale];
   const orderId = decodeURIComponent(id);
-  const order = orderRecords.find((item) => item.id === orderId);
+  const [quotations, customers] = await Promise.all([getQuotations(), getCustomers()]);
+  const order = findOrderRecord(orderId, quotations, customers);
   if (!order) notFound();
   const production = productionOrders.find((item) => item.customer === order.customer);
   const stageDetails = buildStageDetails(order, locale, production?.order);
@@ -124,7 +127,7 @@ export default async function OrderDetailPage({
         description={`${order.customer} · ${text(order.status, locale)}`}
         actions={
           <Button asChild variant="outline">
-            <Link href={`/${locale}/customers/11111111-1111-4111-8111-111111111111`}>
+            <Link href={`/${locale}/customers/${order.customerId}`}>
               <ExternalLink className="size-4" />
               {page.customer360}
             </Link>
@@ -133,7 +136,7 @@ export default async function OrderDetailPage({
       />
 
       <section className="grid gap-4 md:grid-cols-4">
-        <Summary label={copy.common.amount} value={formatCurrency(order.amount)} />
+        <Summary label={copy.common.amount} value={formatCurrency(order.amount, order.currency)} />
         <Summary label={copy.common.status} value={text(order.status, locale)} />
         <Summary label={page.quotation} value={order.quotation} />
         <Summary label={copy.common.progress} value={`${order.progress}%`} />
@@ -258,7 +261,7 @@ export default async function OrderDetailPage({
   );
 }
 
-type OrderRecord = (typeof orderRecords)[number];
+type OrderRecord = CrmOrderRecord;
 type StageStatus = "completed" | "current" | "waiting";
 type StageDetail = {
   name: string;
