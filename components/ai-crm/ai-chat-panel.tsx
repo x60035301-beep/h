@@ -40,7 +40,7 @@ const localCopy = {
     copied: "已复制",
     reset: "清空",
     failed: "生成失败",
-    firstReply: "您好，我是 HOMY 本地销售助手。可以帮你生成压价处理、报价邮件、WhatsApp 回复和跟进话术。",
+    firstReply: "您好，我是 HOMY 本地销售助手。可以帮你生成压价处理、报价邮件、WhatsApp 回复和跟进话术；客户可发送内容会默认附印尼语回复。",
     inputMissing: "请先输入问题"
   },
   en: {
@@ -50,7 +50,7 @@ const localCopy = {
     copied: "Copied",
     reset: "Clear",
     failed: "Generation failed",
-    firstReply: "Hi, I am the HOMY local sales assistant. I can draft price negotiation replies, quotation emails, WhatsApp messages, and follow-ups.",
+    firstReply: "Hi, I am the HOMY local sales assistant. I can draft price negotiation replies, quotation emails, WhatsApp messages, and follow-ups, with Bahasa Indonesia customer-ready copy included.",
     inputMissing: "Please enter a question first"
   },
   id: {
@@ -60,7 +60,7 @@ const localCopy = {
     copied: "Disalin",
     reset: "Hapus",
     failed: "Gagal membuat balasan",
-    firstReply: "Halo, saya asisten sales lokal HOMY. Saya bisa bantu membuat balasan negosiasi harga, email penawaran, WhatsApp, dan follow-up.",
+    firstReply: "Halo, saya asisten sales lokal HOMY. Saya bisa bantu membuat balasan negosiasi harga, email penawaran, WhatsApp, dan follow-up dalam Bahasa Indonesia.",
     inputMissing: "Tulis pertanyaan terlebih dahulu"
   }
 } as const;
