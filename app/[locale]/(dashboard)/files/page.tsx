@@ -13,7 +13,7 @@ export default async function FilesPage({ params }: { params: Promise<{ locale: 
   return (
     <div className="page-shell">
       <PageHeader title={dictionary.pages.files.title} description={dictionary.pages.files.description} />
-      <FileCenter attachments={attachments} customers={customers} />
+      <FileCenter attachments={attachments} customers={customers} locale={locale} />
     </div>
   );
 }

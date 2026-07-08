@@ -339,7 +339,7 @@ export default async function CustomerDetailPage({
 
         <TabsContent value="attachments">
           <div className="space-y-4">
-            <AttachmentUpload customerId={customer.id} />
+            <AttachmentUpload customerId={customer.id} locale={locale} />
             <Card>
               <CardHeader>
                 <CardTitle>{copy.customerAttachments}</CardTitle>

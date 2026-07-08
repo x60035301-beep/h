@@ -18,7 +18,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/types/crm";
 
 type LocalizedText = Record<Locale, string>;
@@ -161,40 +160,22 @@ export function AfterSalesMediaGallery({
     }
 
     setUploading(true);
-    let url = URL.createObjectURL(file);
-    let storagePath: string | null = null;
-    const supabase = createClient();
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch("/api/attachments", {
+      method: "POST",
+      body: formData
+    });
 
-    if (supabase) {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      storagePath = `after-sales/${caseId}/${Date.now()}-${safeName}`;
-      const { error } = await supabase.storage.from("attachments").upload(storagePath, file, {
-        contentType: file.type,
-        upsert: false
-      });
-
-      if (error) {
-        setUploading(false);
-        toast({ title: page.uploadFailed, description: error.message, variant: "destructive" });
-        return;
-      }
-
-      const { data } = supabase.storage.from("attachments").getPublicUrl(storagePath);
-      url = data.publicUrl;
-
-      await fetch("/api/attachments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          file_name: file.name,
-          file_type: type,
-          file_url: url,
-          storage_path: storagePath,
-          size_bytes: file.size
-        })
-      }).catch(() => null);
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setUploading(false);
+      toast({ title: page.uploadFailed, description: result?.error ?? result?.message, variant: "destructive" });
+      return;
     }
 
+    const result = await response.json();
+    const url = result?.data?.file_url ?? URL.createObjectURL(file);
     const mediaTitle = title.trim() || file.name;
     const mediaCategory = category.trim() || (type === "image" ? page.images : page.videos);
     const mediaNote = note.trim() || mediaTitle;

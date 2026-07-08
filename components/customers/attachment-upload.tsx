@@ -1,84 +1,96 @@
 "use client";
 
 import { useState } from "react";
-import { Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import type { Locale } from "@/types/crm";
 
-export function AttachmentUpload({ customerId }: { customerId: string }) {
+const copy = {
+  zh: {
+    upload: "上传附件",
+    uploading: "上传中",
+    uploaded: "附件已上传",
+    failed: "上传失败",
+    unsupported: "请选择 PDF、图片或视频文件"
+  },
+  en: {
+    upload: "Upload attachment",
+    uploading: "Uploading",
+    uploaded: "Attachment uploaded",
+    failed: "Upload failed",
+    unsupported: "Choose a PDF, image, or video file"
+  },
+  id: {
+    upload: "Upload lampiran",
+    uploading: "Uploading",
+    uploaded: "Lampiran sudah diupload",
+    failed: "Upload gagal",
+    unsupported: "Pilih file PDF, gambar, atau video"
+  }
+} as const;
+
+export function AttachmentUpload({ customerId, locale = "zh" }: { customerId: string; locale?: Locale }) {
+  const router = useRouter();
+  const page = copy[locale];
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [inputKey, setInputKey] = useState(0);
 
   async function upload() {
     if (!file) return;
-    const supabase = createClient();
-    if (!supabase) {
-      setLoading(true);
-      const localUrl = URL.createObjectURL(file);
-      const response = await fetch("/api/attachments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_id: customerId,
-          file_name: file.name,
-          file_url: localUrl,
-          storage_path: null,
-          file_type: file.type.includes("image") ? "image" : file.type.includes("video") ? "video" : file.type.includes("pdf") ? "pdf" : "other",
-          size_bytes: file.size
-        })
-      });
-      setLoading(false);
-      if (!response.ok) {
-        toast({ title: "Upload failed", variant: "destructive" });
-        return;
-      }
-      setFile(null);
-      toast({ title: "File uploaded" });
+
+    if (!isSupportedFile(file)) {
+      toast({ title: page.unsupported, variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    const path = `${customerId}/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("attachments").upload(path, file, { upsert: false });
-    if (error) {
-      setLoading(false);
-      toast({ title: "上传失败", description: error.message, variant: "destructive" });
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("customer_id", customerId);
+
+    const response = await fetch("/api/attachments", {
+      method: "POST",
+      body: formData
+    });
+
+    setLoading(false);
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      toast({
+        title: page.failed,
+        description: result?.error ?? result?.message,
+        variant: "destructive"
+      });
       return;
     }
 
-    const { data } = supabase.storage.from("attachments").getPublicUrl(path);
-    await fetch("/api/attachments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customer_id: customerId,
-        file_name: file.name,
-        file_url: data.publicUrl,
-        storage_path: path,
-        file_type: file.type.includes("image") ? "image" : file.type.includes("video") ? "video" : file.type.includes("pdf") ? "pdf" : "other",
-        size_bytes: file.size
-      })
-    });
-    setLoading(false);
     setFile(null);
-    toast({ title: "文件已上传" });
-    location.reload();
+    setInputKey((current) => current + 1);
+    toast({ title: page.uploaded });
+    router.refresh();
   }
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-dashed p-4 sm:flex-row sm:items-center">
       <Input
+        key={inputKey}
         type="file"
         accept="application/pdf,image/*,video/*"
         onChange={(event) => setFile(event.target.files?.[0] ?? null)}
       />
       <Button onClick={upload} disabled={!file || loading} type="button">
-        <Upload />
-        上传附件
+        {loading ? <Loader2 className="animate-spin" /> : <Upload />}
+        {loading ? page.uploading : page.upload}
       </Button>
     </div>
   );
+}
+
+function isSupportedFile(file: File) {
+  return file.type.startsWith("image/") || file.type.startsWith("video/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }
