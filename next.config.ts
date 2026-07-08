@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdfkit"],
-  outputFileTracingIncludes: {
-    "/api/quotations/[id]/pdf": ["./node_modules/pdfkit/js/data/**/*"]
-  },
   images: {
     remotePatterns: [
       {
