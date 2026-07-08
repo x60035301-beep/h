@@ -209,7 +209,6 @@ const emptyQuotationItems: QuotationItem[] = [];
 export function QuotationForm({
   locale,
   customers,
-  products,
   mode = "create",
   quotation,
   items: initialItems = emptyQuotationItems,
@@ -234,11 +233,9 @@ export function QuotationForm({
   const dictionary = getDictionary(locale);
   const isEdit = mode === "edit" && Boolean(quotation);
   const lastAutoPricesRef = useRef<Record<number, number>>({});
-  const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const densityOptions = useMemo(
     () =>
       uniqueOptions([
-        ...products.map((product) => product.density),
         "10D",
         "12D",
         "14D",
@@ -254,10 +251,9 @@ export function QuotationForm({
         "32D",
         "45D"
       ]),
-    [products]
+    []
   );
-  const specificationOptions = useMemo(() => uniqueOptions(products.map((product) => product.specification)), [products]);
-  const sizeOptions = useMemo(() => uniqueOptions(products.map((product) => product.size)), [products]);
+  const sizeOptions = useMemo(() => uniqueOptions(["120 x 180 x 1.5", "200 x 100 x 10", "200 x 160 x 5"]), []);
   const defaultValues = useMemo<QuotationInput>(
     () => ({
       customer_id: quotation?.customer_id ?? customers[0]?.id ?? "",
@@ -268,14 +264,13 @@ export function QuotationForm({
       items: initialItems.length
         ? initialItems.map((item) => {
             const meta = parseQuotationItemNotes(item.notes);
-            const product = item.product_id ? productById.get(item.product_id) : null;
 
             return {
-              product_id: item.product_id,
+              product_id: null,
               product_name: item.product_name,
-              density: meta.density ?? product?.density ?? item.density ?? "",
-              specification: meta.specification ?? product?.specification ?? item.specification ?? "",
-              size: meta.size ?? product?.size ?? item.size ?? "",
+              density: meta.density ?? item.density ?? "",
+              specification: meta.specification ?? item.specification ?? "",
+              size: meta.size ?? item.size ?? "",
               quantity: item.quantity,
               unit_price: item.unit_price,
               notes: meta.note ?? ""
@@ -283,18 +278,18 @@ export function QuotationForm({
           })
         : [
             {
-              product_id: products[0]?.id ?? null,
-              product_name: products[0]?.name ?? "",
-              density: products[0]?.density ?? "",
-              specification: products[0]?.specification ?? "",
-              size: products[0]?.size ?? "",
+              product_id: null,
+              product_name: "",
+              density: "",
+              specification: "",
+              size: "",
               quantity: 1,
-              unit_price: products[0]?.price ?? 0,
+              unit_price: 0,
               notes: ""
             }
           ]
     }),
-    [customers, initialItems, productById, products, quotation]
+    [customers, initialItems, quotation]
   );
   const form = useForm<QuotationInput>({
     resolver: zodResolver(quotationSchema) as any,
@@ -317,8 +312,7 @@ export function QuotationForm({
         size: item.size,
         currency
       });
-      const productPrice = densityPrice ? null : findMatchingProductPrice(item, products, productById);
-      const autoPrice = densityPrice?.unitPrice ?? productPrice;
+      const autoPrice = densityPrice?.unitPrice;
       if (autoPrice === null || autoPrice === undefined || !Number.isFinite(autoPrice)) return;
 
       const currentPrice = Number(item.unit_price || 0);
@@ -336,7 +330,7 @@ export function QuotationForm({
 
       lastAutoPricesRef.current[index] = autoPrice;
     });
-  }, [currency, form, productById, products, watchedItems]);
+  }, [currency, form, watchedItems]);
 
   async function onSubmit(values: QuotationInput) {
     let documentWindow: Window | null = null;
@@ -385,18 +379,6 @@ export function QuotationForm({
 
     onSaved?.();
     router.refresh();
-  }
-
-  function selectProduct(index: number, productId: string) {
-    const product = products.find((item) => item.id === productId);
-    form.setValue(`items.${index}.product_id`, productId);
-    if (product) {
-      form.setValue(`items.${index}.product_name`, product.name);
-      form.setValue(`items.${index}.density`, product.density ?? "");
-      form.setValue(`items.${index}.specification`, product.specification ?? "");
-      form.setValue(`items.${index}.size`, product.size ?? "");
-      form.setValue(`items.${index}.unit_price`, product.price);
-    }
   }
 
   async function requestAiAdvice() {
@@ -500,11 +482,6 @@ export function QuotationForm({
             <option key={option} value={option} />
           ))}
         </datalist>
-        <datalist id="quotation-specification-options">
-          {specificationOptions.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
         <datalist id="quotation-size-options">
           {sizeOptions.map((option) => (
             <option key={option} value={option} />
@@ -517,13 +494,10 @@ export function QuotationForm({
             size: item?.size,
             currency
           });
-          const productPrice = densityPrice ? null : findMatchingProductPrice(item, products, productById);
           const amount = Number(item?.quantity || 0) * Number(item?.unit_price || 0);
           const pricingHint = densityPrice
             ? formatDensityCalculationHint(densityPrice, currency, calculationText)
-            : productPrice
-              ? `${calculationText.auto}: ${calculationText.productBasis}`
-              : calculationText.waiting;
+            : calculationText.waiting;
 
           return (
             <div key={field.id} className="grid gap-4 rounded-lg border bg-card p-4 shadow-sm lg:grid-cols-12">
@@ -541,22 +515,7 @@ export function QuotationForm({
                 </Button>
               </div>
 
-              <div className="grid gap-1 lg:col-span-6">
-                <Label className="text-xs text-muted-foreground">{copy.product}</Label>
-                <Select value={watchedItems[index]?.product_id ?? ""} onValueChange={(value) => selectProduct(index, value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={copy.product} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1 lg:col-span-6">
+              <div className="grid gap-1 lg:col-span-12">
                 <Label className="text-xs text-muted-foreground">{copy.productName}</Label>
                 <Input {...form.register(`items.${index}.product_name`)} placeholder={copy.productName} />
               </div>
@@ -568,7 +527,7 @@ export function QuotationForm({
                 </div>
                 <div className="grid gap-1">
                   <Label className="text-xs font-medium text-primary">{copy.specificationPricing}</Label>
-                  <Input list="quotation-specification-options" {...form.register(`items.${index}.specification`)} placeholder={copy.specification} />
+                  <Input {...form.register(`items.${index}.specification`)} placeholder={copy.specification} />
                 </div>
                 <div className="grid gap-1">
                   <Label className="text-xs font-medium text-primary">{copy.size}</Label>
@@ -658,47 +617,6 @@ export function QuotationForm({
   );
 }
 
-type QuotationFormItem = QuotationInput["items"][number];
-
-function findMatchingProductPrice(
-  item: QuotationFormItem | undefined,
-  products: Product[],
-  productById: Map<string, Product>
-) {
-  if (!item) return null;
-
-  const selectedProduct = item.product_id ? productById.get(item.product_id) : null;
-  if (selectedProduct?.price) return selectedProduct.price;
-
-  const normalizedSpecification = normalizeMatchText(item.specification);
-  const normalizedSize = normalizeMatchText(item.size);
-  const normalizedDensity = normalizeMatchText(item.density);
-  if (!normalizedSpecification && !normalizedSize && !normalizedDensity) return null;
-
-  const matchedProduct = products.find((product) => {
-    const productSpecification = normalizeMatchText(product.specification);
-    const productSize = normalizeMatchText(product.size);
-    const productDensity = normalizeMatchText(product.density);
-
-    const specificationMatches =
-      normalizedSpecification &&
-      productSpecification &&
-      (productSpecification.includes(normalizedSpecification) || normalizedSpecification.includes(productSpecification));
-    const sizeMatches =
-      normalizedSize &&
-      productSize &&
-      (productSize.includes(normalizedSize) || normalizedSize.includes(productSize));
-    const densityMatches =
-      normalizedDensity &&
-      productDensity &&
-      (productDensity.includes(normalizedDensity) || normalizedDensity.includes(productDensity));
-
-    return Boolean(specificationMatches || (sizeMatches && densityMatches));
-  });
-
-  return matchedProduct?.price ?? null;
-}
-
 function formatDensityCalculationHint(
   result: DensityPriceResult,
   currency: string,
@@ -708,14 +626,10 @@ function formatDensityCalculationHint(
   return `${text.auto}: ${text.densityBasis} ${formatCurrency(
     result.basePriceIdrPerCubic,
     "IDR"
-  )}/m³ × ${text.volume} ${cubicMeters}m³ × ${text.factor} ${result.processingFactor} = ${formatCurrency(
+  )}/m3 x ${text.volume} ${cubicMeters}m3 x ${text.factor} ${result.processingFactor} = ${formatCurrency(
     result.unitPrice,
     currency
   )}`;
-}
-
-function normalizeMatchText(value: string | null | undefined) {
-  return `${value ?? ""}`.toLowerCase().replace(/\s+/g, "").trim();
 }
 
 function uniqueOptions(values: Array<string | null | undefined>) {
