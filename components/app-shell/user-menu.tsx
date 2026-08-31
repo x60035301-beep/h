@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { getDictionary } from "@/lib/dictionaries";
-import { createClient } from "@/lib/supabase/client";
 import { getInitials } from "@/lib/utils";
 import type { SessionProfile } from "@/lib/permissions";
 import type { Locale } from "@/types/crm";
@@ -28,17 +27,18 @@ export function UserMenu({ locale, profile }: { locale: Locale; profile: Session
   const roleLabel = dictionary.roles[profile.role] ?? profile.role.replaceAll("_", " ");
 
   async function signOut() {
-    const supabase = createClient();
-    if (!supabase) {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error();
+      router.replace(`/${locale}/login`);
+      router.refresh();
+    } catch {
       toast({
-        title: dictionary.auth.missingEnvTitle,
+        title: dictionary.auth.loginFailed,
         description: dictionary.auth.missingEnvDescription,
         variant: "destructive"
       });
-      return;
     }
-    await supabase.auth.signOut();
-    router.refresh();
   }
 
   return (

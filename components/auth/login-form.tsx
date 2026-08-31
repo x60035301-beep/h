@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { getDictionary } from "@/lib/dictionaries";
 import { hasSupabaseEnv } from "@/lib/env";
-import { createClient } from "@/lib/supabase/client";
 import { withLocale } from "@/lib/i18n";
 import type { Locale } from "@/types/crm";
 
@@ -50,9 +49,8 @@ export function LoginForm({ locale }: { locale: Locale }) {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email"));
     const password = String(formData.get("password"));
-    const supabase = createClient();
 
-    if (!supabase) {
+    if (!supabaseConfigured) {
       toast({
         title: dictionary.auth.missingEnvTitle,
         description: dictionary.auth.missingEnvDescription,
@@ -62,16 +60,30 @@ export function LoginForm({ locale }: { locale: Locale }) {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const result = (await response.json()) as { error?: string };
 
-    if (error) {
-      toast({ title: dictionary.auth.loginFailed, description: error.message, variant: "destructive" });
-      return;
+      if (!response.ok) {
+        toast({ title: dictionary.auth.loginFailed, description: result.error, variant: "destructive" });
+        return;
+      }
+
+      router.push(withLocale("/dashboard", locale));
+      router.refresh();
+    } catch {
+      toast({
+        title: dictionary.auth.loginFailed,
+        description: "Unable to reach the HOMY CRM server.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-
-    router.push(withLocale("/dashboard", locale));
-    router.refresh();
   }
 
   return (

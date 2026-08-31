@@ -9,8 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { getDictionary } from "@/lib/dictionaries";
-import { createClient } from "@/lib/supabase/client";
-import { absoluteUrl } from "@/lib/utils";
 import { withLocale } from "@/lib/i18n";
 import type { Locale } from "@/types/crm";
 
@@ -22,20 +20,23 @@ export function ResetPasswordForm({ locale }: { locale: Locale }) {
     event.preventDefault();
     setLoading(true);
     const email = String(new FormData(event.currentTarget).get("email"));
-    const supabase = createClient();
-    if (!supabase) {
-      toast({ title: dictionary.auth.resetMissingEnv, variant: "destructive" });
+    let error: string | undefined;
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, locale })
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) error = result.error ?? dictionary.auth.resetFailed;
+    } catch {
+      error = dictionary.auth.resetFailed;
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: absoluteUrl(withLocale("/update-password", locale))
-    });
-    setLoading(false);
     toast({
       title: error ? dictionary.auth.resetFailed : dictionary.auth.resetSuccessTitle,
-      description: error?.message ?? dictionary.auth.resetSuccessDescription,
+      description: error ?? dictionary.auth.resetSuccessDescription,
       variant: error ? "destructive" : "default"
     });
   }
@@ -63,16 +64,22 @@ export function UpdatePasswordForm({ locale }: { locale: Locale }) {
     event.preventDefault();
     setLoading(true);
     const password = String(new FormData(event.currentTarget).get("password"));
-    const supabase = createClient();
-    if (!supabase) {
-      toast({ title: dictionary.auth.resetMissingEnv, variant: "destructive" });
+    let error: string | undefined;
+    try {
+      const response = await fetch("/api/auth/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) error = result.error ?? dictionary.auth.updateFailed;
+    } catch {
+      error = dictionary.auth.updateFailed;
+    } finally {
       setLoading(false);
-      return;
     }
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
     if (error) {
-      toast({ title: dictionary.auth.updateFailed, description: error.message, variant: "destructive" });
+      toast({ title: dictionary.auth.updateFailed, description: error, variant: "destructive" });
       return;
     }
     toast({ title: dictionary.auth.updateSuccess });
