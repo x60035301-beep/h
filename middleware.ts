@@ -1,9 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { defaultLocale, isLocale } from "@/lib/i18n";
-import { updateSession } from "@/lib/supabase/middleware";
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const ignored =
@@ -22,7 +21,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return updateSession(request);
+  return NextResponse.next();
 }
 
 export const config = {
