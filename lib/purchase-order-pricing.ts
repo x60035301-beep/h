@@ -5,7 +5,10 @@ const purchaseOrderDensityPrices: Record<number, number> = {
   18: 980000,
   20: 1080000,
   22: 1160000,
-  24: 1250000
+  24: 1250000,
+  26: 1295000,
+  28: 1340000,
+  30: 1385000
 };
 
 export function getPurchaseOrderDensityPrice(density: string | null | undefined) {
