@@ -293,7 +293,7 @@ function drawInfoSection(
     `Kontak: ${customer.contact_name ?? "-"}`,
     `Negara: ${customer.country ?? "-"}`
   ], palette);
-  drawInfoBox(doc, left + boxWidth + gap, y, boxWidth, "Dokumen Penawaran", [
+  drawInfoBox(doc, left + boxWidth + gap, y, boxWidth, "Invoice", [
     `Nomor: ${quotation.quotation_no}`,
     `Tanggal: ${formatDate(quotation.created_at, "yyyy-MM-dd")}`,
     `Berlaku Sampai: ${quotation.valid_until ?? "-"}`
