@@ -289,9 +289,7 @@ function drawInfoSection(
   const gap = 18;
   const boxWidth = (width - gap) / 2;
   drawInfoBox(doc, left, y, boxWidth, "Kepada", [
-    customer.company_name,
-    `Kontak: ${customer.contact_name ?? "-"}`,
-    `Negara: ${customer.country ?? "-"}`
+    customer.company_name
   ], palette);
   drawInfoBox(doc, left + boxWidth + gap, y, boxWidth, "Invoice", [
     `Nomor: ${quotation.quotation_no}`,
