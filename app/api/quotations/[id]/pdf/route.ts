@@ -262,7 +262,7 @@ function drawHeader(
 
   doc.moveTo(left, 96).lineTo(left + 180, 96).strokeColor(palette.text).lineWidth(0.8).stroke();
   doc.moveTo(right - 180, 96).lineTo(right, 96).stroke();
-  doc.fillColor(palette.text).font("Helvetica-Bold").fontSize(15).text("PENAWARAN HARGA BUSA", left, 89, {
+  doc.fillColor(palette.text).font("Helvetica-Bold").fontSize(15).text("INVOICE", left, 89, {
     width: right - left,
     align: "center"
   });
