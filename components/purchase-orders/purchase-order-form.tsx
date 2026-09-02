@@ -177,7 +177,7 @@ export function PurchaseOrderForm({
 
       <section className="space-y-3">
         <div className="flex items-center justify-between"><Label>{text.details}</Label><Button type="button" size="sm" variant="outline" onClick={() => append({ product_id: null, product_name: "", density: "", specification: "", size: "", quantity: 1, unit_price: 0, notes: "" })}><Plus />{text.add}</Button></div>
-        <datalist id="po-density-options">{["10D", "12D", "14D", "16D", "18D", "20D", "22D", "24D", "26D", "28D", "30D", "32D", "45D"].map((value) => <option key={value} value={value} />)}</datalist>
+        <datalist id="po-density-options">{Array.from({ length: 19 }, (_, index) => `${index + 12}D`).map((value) => <option key={value} value={value} />)}</datalist>
         <datalist id="po-size-options">{["120 x 180 x 1.5", "200 x 100 x 10", "200 x 160 x 5"].map((value) => <option key={value} value={value} />)}</datalist>
         {fields.map((field, index) => {
           const calculation = calculate(watchedItems[index]);
