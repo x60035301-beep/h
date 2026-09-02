@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  outputFileTracingIncludes: {
-    "/api/quotations/[id]/pdf": ["./assets/fonts/NotoSansCJKsc-Regular.otf"]
-  },
   images: {
     remotePatterns: [
       {
