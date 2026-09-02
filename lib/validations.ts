@@ -95,7 +95,9 @@ export const settingsSchema = z.object({
   company_name: z.string().min(2),
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().or(z.literal("")).nullable(),
-  address: z.string().optional().nullable()
+  address: z.string().optional().nullable(),
+  purchase_order_supplier_name: z.string().min(2).optional().or(z.literal("")).nullable(),
+  purchase_order_supplier_location: z.string().optional().nullable()
 });
 
 export const stageUpdateSchema = z.object({

@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { getPurchaseOrderSupplier } from "@/lib/purchase-order-supplier";
 import { settingsSchema, type SettingsInput } from "@/lib/validations";
 import type { CompanySettings, Locale } from "@/types/crm";
 
@@ -56,6 +57,12 @@ const copy = {
     email: "邮箱",
     address: "地址",
     addressHint: "建议填写完整工厂或办公室地址，方便报价单和合同引用。",
+    purchaseOrderSupplier: "采购单供应商",
+    purchaseOrderSupplierHint: "独立于客户资料，采购单 PDF 使用这里的信息。",
+    purchaseOrderSupplierName: "供应商名称",
+    purchaseOrderSupplierNameHint: "例如：PT. GOLD EAGLE FOAM INDUSTRY",
+    purchaseOrderSupplierLocation: "供应商地点",
+    purchaseOrderSupplierLocationHint: "例如：CIKANDE",
     systemLanguage: "多语言",
     systemLanguageValue: "中文 / English / Bahasa Indonesia",
     security: "权限与安全",
@@ -100,6 +107,12 @@ const copy = {
     email: "Email",
     address: "Address",
     addressHint: "Use the full factory or office address for quotations and contracts.",
+    purchaseOrderSupplier: "Purchase Order Supplier",
+    purchaseOrderSupplierHint: "Separate from customer data; this information is used in purchase order PDFs.",
+    purchaseOrderSupplierName: "Supplier name",
+    purchaseOrderSupplierNameHint: "Example: PT. GOLD EAGLE FOAM INDUSTRY",
+    purchaseOrderSupplierLocation: "Supplier location",
+    purchaseOrderSupplierLocationHint: "Example: CIKANDE",
     systemLanguage: "Languages",
     systemLanguageValue: "Chinese / English / Bahasa Indonesia",
     security: "Permissions & Security",
@@ -144,6 +157,12 @@ const copy = {
     email: "Email",
     address: "Alamat",
     addressHint: "Gunakan alamat pabrik atau kantor lengkap untuk quotation dan kontrak.",
+    purchaseOrderSupplier: "Pemasok purchase order",
+    purchaseOrderSupplierHint: "Terpisah dari data pelanggan; informasi ini dipakai di PDF purchase order.",
+    purchaseOrderSupplierName: "Nama pemasok",
+    purchaseOrderSupplierNameHint: "Contoh: PT. GOLD EAGLE FOAM INDUSTRY",
+    purchaseOrderSupplierLocation: "Lokasi pemasok",
+    purchaseOrderSupplierLocationHint: "Contoh: CIKANDE",
     systemLanguage: "Bahasa",
     systemLanguageValue: "中文 / English / Bahasa Indonesia",
     security: "Izin & Keamanan",
@@ -398,6 +417,31 @@ export function SettingsForm({ settings, locale = "zh" }: { settings: CompanySet
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>{page.purchaseOrderSupplier}</CardTitle>
+            <CardDescription>{page.purchaseOrderSupplierHint}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5">
+            <Field
+              label={page.purchaseOrderSupplierName}
+              htmlFor="purchase_order_supplier_name"
+              error={form.formState.errors.purchase_order_supplier_name?.message}
+              description={page.purchaseOrderSupplierNameHint}
+            >
+              <Input id="purchase_order_supplier_name" {...form.register("purchase_order_supplier_name")} />
+            </Field>
+            <Field
+              label={page.purchaseOrderSupplierLocation}
+              htmlFor="purchase_order_supplier_location"
+              error={form.formState.errors.purchase_order_supplier_location?.message}
+              description={page.purchaseOrderSupplierLocationHint}
+            >
+              <Input id="purchase_order_supplier_location" {...form.register("purchase_order_supplier_location")} />
+            </Field>
+          </CardContent>
+        </Card>
+
         <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {form.formState.isDirty ? <Globe2 className="size-4 text-amber-600" /> : <CheckCircle2 className="size-4 text-emerald-600" />}
@@ -534,12 +578,15 @@ function IconField({
 }
 
 function normalizeSettings(settings: CompanySettings): SettingsInput {
+  const supplier = getPurchaseOrderSupplier(settings.metadata);
   return {
     logo_url: settings.logo_url ?? "",
     company_name: settings.company_name,
     phone: settings.phone ?? "",
     email: settings.email ?? "",
-    address: settings.address ?? ""
+    address: settings.address ?? "",
+    purchase_order_supplier_name: supplier.name,
+    purchase_order_supplier_location: supplier.location
   };
 }
 
@@ -549,7 +596,9 @@ function normalizeInput(values: SettingsInput): SettingsInput {
     company_name: values.company_name,
     phone: values.phone ?? "",
     email: values.email ?? "",
-    address: values.address ?? ""
+    address: values.address ?? "",
+    purchase_order_supplier_name: values.purchase_order_supplier_name ?? "",
+    purchase_order_supplier_location: values.purchase_order_supplier_location ?? ""
   };
 }
 

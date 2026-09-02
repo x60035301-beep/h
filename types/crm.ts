@@ -187,6 +187,7 @@ export type CompanySettings = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type AppUser = {

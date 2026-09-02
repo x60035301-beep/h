@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
 import { parsePurchaseOrderNotes } from "@/lib/purchase-order-meta";
+import { getPurchaseOrderSupplier } from "@/lib/purchase-order-supplier";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
 import { formatDate } from "@/lib/utils";
@@ -33,7 +34,7 @@ type Customer = {
   contact_name: string | null;
   whatsapp: string | null;
 };
-type Settings = { company_name: string };
+type Settings = { company_name: string; metadata?: unknown };
 
 const PDF_FONT = "NotoSansSC";
 let cachedPdfFont: Buffer | null = null;
@@ -67,7 +68,7 @@ export async function GET(_: Request, contextParams: Context) {
         .is("deleted_at", null)
         .order("created_at", { ascending: true }),
       context.supabase.from("customers").select("company_name,contact_name,whatsapp").eq("id", order.customer_id).maybeSingle(),
-      context.supabase.from("settings").select("company_name").is("deleted_at", null).limit(1).maybeSingle()
+      context.supabase.from("settings").select("company_name,metadata").is("deleted_at", null).limit(1).maybeSingle()
     ]);
     if (itemError) throw itemError;
     if (customerError) throw customerError;
@@ -106,13 +107,12 @@ function renderPurchaseOrder({ order, items, customer, settings }: { order: Orde
     const width = right - left;
     const meta = parsePurchaseOrderNotes(order.notes);
     const currency = order.currency.toUpperCase();
+    const supplier = getPurchaseOrderSupplier(settings.metadata);
 
     drawHeader(doc, left, right, settings.company_name, colors);
     drawInfoBox(doc, left, 112, (width - 18) / 2, "供应商 / Pemasok", [
-      customer.company_name,
-      `联系人 / Kontak: ${customer.contact_name ?? "-"}`,
-      `联系电话 / Telepon: ${customer.whatsapp ?? "-"}`,
-      `收货地址 / Alamat Pengiriman: ${meta.deliveryAddress ?? "-"}`
+      supplier.name,
+      supplier.location
     ], colors);
     drawInfoBox(doc, left + (width - 18) / 2 + 18, 112, (width - 18) / 2, "采购信息 / Informasi Pembelian", [
       `采购单号 / Nomor PO: ${order.quotation_no}`,
