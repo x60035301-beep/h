@@ -3,6 +3,7 @@ import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
 
 import { getApiContext, handleApiError, isApiError, type ApiContext } from "@/lib/api";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
+import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
 import { formatDate } from "@/lib/utils";
 
 type Context = { params: Promise<{ id: string }> };
@@ -66,6 +67,7 @@ export async function GET(_: Request, contextParams: Context) {
       .from("quotations")
       .select("*")
       .eq("id", id)
+      .not("quotation_no", "like", "PO-%")
       .is("deleted_at", null)
       .maybeSingle();
     if (quotationError) throw quotationError;
@@ -338,17 +340,35 @@ function drawSpecificationTable(
     y,
     `SPESIFIKASI PENAWARAN (${currency})`,
     [
-      { header: "Kode Barang", width: 74, maxLength: 14, value: (item, index) => makeItemCode(quotation, item, index) },
-      { header: "Nama Barang", width: 110, maxLength: 21, value: (item) => item.product_name },
-      { header: "Density", width: 54, maxLength: 7, align: "center", value: (item) => formatDensityValue(item.density) },
-      { header: "Ukuran / Spec", width: 102, maxLength: 22, value: (item) => buildSpecificationText(item) },
-      { header: "Qty.", width: 38, maxLength: 8, align: "right", value: (item) => formatQuantity(item.quantity) },
-      { header: "Harga", width: 72, maxLength: 14, align: "right", value: (item) => formatMoneyValue(item.unit_price, currency) },
-      { header: "Total", width: width - 74 - 110 - 54 - 102 - 38 - 72, maxLength: 14, align: "right", value: (item) => formatMoneyValue(item.amount, currency) }
+      { header: "Kode Barang", width: 68, maxLength: 13, value: (item, index) => makeItemCode(quotation, item, index) },
+      { header: "Nama Barang", width: 76, maxLength: 14, value: (item) => item.product_name },
+      { header: "Density", width: 40, maxLength: 7, align: "center", value: (item) => formatDensityValue(item.density) },
+      { header: "Ukuran / Spec", width: 92, maxLength: 20, value: (item) => buildSpecificationText(item) },
+      { header: "Qty.", width: 30, maxLength: 6, align: "right", value: (item) => formatQuantity(item.quantity) },
+      { header: "Vol/Pcs m3", width: 50, maxLength: 10, align: "right", value: (item) => formatItemVolume(item, false) },
+      { header: "Total Vol m3", width: 50, maxLength: 10, align: "right", value: (item) => formatItemVolume(item, true) },
+      { header: "Harga", width: 62, maxLength: 12, align: "right", value: (item) => formatMoneyValue(item.unit_price, currency) },
+      {
+        header: "Total",
+        width: width - 68 - 76 - 40 - 92 - 30 - 50 - 50 - 62,
+        maxLength: 13,
+        align: "right",
+        value: (item) => formatMoneyValue(item.amount, currency)
+      }
     ],
     items,
-    { left, width, palette, fontSize: 7.5, rowHeight: 26 }
+    { left, width, palette, fontSize: 6.5, rowHeight: 26 }
   );
+}
+
+function formatItemVolume(item: PdfPrintableItem, total: boolean) {
+  const calculation = calculateFoamLineAmount({ unitPrice: item.unit_price, size: item.size, quantity: item.quantity });
+  if (!calculation) return "-";
+  return formatVolumeValue(total ? calculation.totalVolume : calculation.size.cubicMeters);
+}
+
+function formatVolumeValue(value: number) {
+  return new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 6 }).format(value);
 }
 
 function drawTable<T>(
@@ -548,12 +568,10 @@ function formatDensityValue(density: string | null) {
 }
 
 function buildSpecificationText(item: PdfPrintableItem) {
-  const density = formatDensityValue(item.density);
   const size = item.size?.trim();
   const specification = item.specification?.trim();
-  if (density !== "-" && size) return `D.${density} UK ${size.toUpperCase()}`;
-  if (size && specification) return `${size} / ${specification}`;
-  return size ?? specification ?? "-";
+  if (size) return specification ? `${size.toUpperCase()} / ${specification}` : size.toUpperCase();
+  return specification ?? "-";
 }
 
 function makeItemCode(quotation: PdfQuotation, item: PdfPrintableItem, index: number) {
