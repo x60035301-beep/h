@@ -57,7 +57,7 @@ export async function getCustomerDetail(id: string) {
       supabase.from("customers").select("*").eq("id", id).is("deleted_at", null).single(),
       supabase.from("contacts").select("*").eq("customer_id", id).is("deleted_at", null).order("is_primary", { ascending: false }),
       supabase.from("followups").select("*").eq("customer_id", id).is("deleted_at", null).order("followed_at", { ascending: false }),
-      supabase.from("quotations").select("*").eq("customer_id", id).is("deleted_at", null).order("created_at", { ascending: false }),
+      supabase.from("quotations").select("*").eq("customer_id", id).not("quotation_no", "like", "PO-%").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("attachments").select("*").eq("customer_id", id).is("deleted_at", null).order("created_at", { ascending: false })
     ]);
 
@@ -106,7 +106,7 @@ export async function getDashboardData(): Promise<{
   const { data: customers } = canManageAll(profile.role) ? await customersQuery : await customersQuery.eq("owner_id", profile.id);
 
   const today = new Date().toISOString().slice(0, 10);
-  const { data: quotations } = await supabase.from("quotations").select("*").is("deleted_at", null);
+  const { data: quotations } = await supabase.from("quotations").select("*").not("quotation_no", "like", "PO-%").is("deleted_at", null);
   const { data: reminders } = await supabase
     .from("reminders")
     .select("*")
@@ -168,7 +168,26 @@ export async function getQuotations(): Promise<Quotation[]> {
   const supabase = await createClient();
   if (!supabase) return [];
 
-  const { data, error } = await supabase.from("quotations").select("*").is("deleted_at", null).order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("*")
+    .not("quotation_no", "like", "PO-%")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Quotation[];
+}
+
+export async function getPurchaseOrders(): Promise<Quotation[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("*")
+    .like("quotation_no", "PO-%")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Quotation[];
 }
@@ -245,7 +264,7 @@ export async function getAnalyticsData() {
 
   const [{ data: customers, error: customersError }, { data: quotations, error: quotationsError }] = await Promise.all([
     customersQuery,
-    supabase.from("quotations").select("id,customer_id,status,created_at").is("deleted_at", null)
+    supabase.from("quotations").select("id,customer_id,status,created_at").not("quotation_no", "like", "PO-%").is("deleted_at", null)
   ]);
 
   if (customersError) throw customersError;

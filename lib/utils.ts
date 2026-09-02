@@ -61,3 +61,11 @@ export function makeQuotationNo(date = new Date()) {
   const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
   return `HOMY-${y}${m}${d}-${suffix}`;
 }
+
+export function makePurchaseOrderNo(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `PO-${y}${m}${d}-${suffix}`;
+}

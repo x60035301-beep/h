@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Copy, Download, FileText, Loader2, Pencil, Plus } from "lucide-react";
+import { ClipboardList, Copy, Download, FileText, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { QuotationForm } from "@/components/quotations/quotation-form";
@@ -30,6 +30,10 @@ const quotationListCopy = {
     editTitle: "编辑报价单",
     editDescription: "更新客户、状态、币种、有效期和产品明细。",
     generateDocument: "生成报价单",
+    generatePurchaseOrder: "生成采购单",
+    generatingPurchaseOrder: "正在生成采购单...",
+    purchaseOrderReady: "采购单已生成",
+    purchaseOrderFailed: "生成采购单失败",
     loadFailed: "读取报价失败",
     loading: "正在读取报价明细..."
   },
@@ -38,6 +42,10 @@ const quotationListCopy = {
     editTitle: "Edit quotation",
     editDescription: "Update customer, status, currency, validity, and line items.",
     generateDocument: "Generate quotation",
+    generatePurchaseOrder: "Generate purchase order",
+    generatingPurchaseOrder: "Generating purchase order...",
+    purchaseOrderReady: "Purchase order generated",
+    purchaseOrderFailed: "Failed to generate purchase order",
     loadFailed: "Failed to load quotation",
     loading: "Loading quotation details..."
   },
@@ -46,6 +54,10 @@ const quotationListCopy = {
     editTitle: "Edit quotation",
     editDescription: "Update pelanggan, status, mata uang, masa berlaku, dan item produk.",
     generateDocument: "Buat PDF quotation",
+    generatePurchaseOrder: "Buat purchase order",
+    generatingPurchaseOrder: "Membuat purchase order...",
+    purchaseOrderReady: "Purchase order berhasil dibuat",
+    purchaseOrderFailed: "Gagal membuat purchase order",
     loadFailed: "Gagal memuat quotation",
     loading: "Memuat detail quotation..."
   }
@@ -68,6 +80,7 @@ export function QuotationList({
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [generatingPurchaseOrderId, setGeneratingPurchaseOrderId] = useState<string | null>(null);
   const [editDetail, setEditDetail] = useState<{ quotation: Quotation; items: QuotationItem[] } | null>(null);
   const dictionary = getDictionary(locale);
   const copy = dictionary.quotations;
@@ -107,6 +120,35 @@ export function QuotationList({
       setEditOpen(false);
     } finally {
       setEditLoading(false);
+    }
+  }
+
+  async function generatePurchaseOrder(id: string) {
+    const documentWindow = window.open("about:blank", "_blank");
+    if (!documentWindow) {
+      toast({ title: listCopy.purchaseOrderFailed, description: "Popup blocked", variant: "destructive" });
+      return;
+    }
+
+    documentWindow.document.body.innerHTML = `<p style="font-family:system-ui;padding:24px">${listCopy.generatingPurchaseOrder}</p>`;
+    setGeneratingPurchaseOrderId(id);
+    try {
+      const response = await fetch(`/api/quotations/${id}/purchase-order`, { method: "POST" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? listCopy.purchaseOrderFailed);
+
+      documentWindow.location.href = new URL(payload.data.document_url, window.location.origin).toString();
+      toast({ title: listCopy.purchaseOrderReady });
+      router.refresh();
+    } catch (error) {
+      documentWindow.close();
+      toast({
+        title: listCopy.purchaseOrderFailed,
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingPurchaseOrderId(null);
     }
   }
 
@@ -189,6 +231,16 @@ export function QuotationList({
                           <Download />
                           {listCopy.generateDocument}
                         </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={generatingPurchaseOrderId === quotation.id}
+                        onClick={() => generatePurchaseOrder(quotation.id)}
+                        aria-label={listCopy.generatePurchaseOrder}
+                      >
+                        {generatingPurchaseOrderId === quotation.id ? <Loader2 className="animate-spin" /> : <ClipboardList />}
+                        {listCopy.generatePurchaseOrder}
                       </Button>
                     </div>
                   </TableCell>

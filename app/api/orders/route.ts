@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       .from("quotations")
       .select("id,quotation_no,customer_id,status,currency,total_amount")
       .eq("id", payload.quotation_id)
+      .not("quotation_no", "like", "PO-%")
       .is("deleted_at", null)
       .maybeSingle();
     if (error) throw error;

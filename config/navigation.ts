@@ -35,6 +35,7 @@ export const navigationItems = [
   { href: "/kanban", key: "kanban", icon: PanelTop, label: { zh: "Kanban 客户", en: "Kanban", id: "Kanban Pelanggan" } },
   { href: "/inquiries", key: "inquiries", icon: Inbox, label: { zh: "询盘管理", en: "Inquiries", id: "Inquiry" } },
   { href: "/quotations", key: "quotations", icon: FileText, label: { zh: "报价管理", en: "Quotations", id: "Penawaran" } },
+  { href: "/purchase-orders", key: "purchaseOrders", icon: ClipboardList, label: { zh: "采购单", en: "Purchase Orders", id: "Pesanan Pembelian" } },
   { href: "/orders", key: "orders", icon: ClipboardList, label: { zh: "订单管理", en: "Orders", id: "Order" } },
   { href: "/production", key: "production", icon: Factory, label: { zh: "生产管理", en: "Production", id: "Produksi" } },
   { href: "/after-sales", key: "afterSales", icon: LifeBuoy, label: { zh: "售后管理", en: "After Sales", id: "After Sales" } },

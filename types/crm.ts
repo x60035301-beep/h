@@ -109,6 +109,9 @@ export type QuotationItem = {
   notes: string | null;
 };
 
+export type PurchaseOrder = Quotation;
+export type PurchaseOrderItem = QuotationItem;
+
 export type Product = {
   id: string;
   name: string;

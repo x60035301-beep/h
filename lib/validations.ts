@@ -68,6 +68,11 @@ export const quotationSchema = z.object({
   items: z.array(quotationItemSchema).min(1)
 });
 
+export const purchaseOrderSchema = quotationSchema.extend({
+  delivery_address: z.string().optional().nullable(),
+  payment_terms: z.string().optional().nullable()
+});
+
 export const scriptSchema = z.object({
   title: z.string().min(2),
   category_id: z.string().uuid().optional().nullable(),
@@ -102,6 +107,7 @@ export type CustomerInput = z.infer<typeof customerSchema>;
 export type FollowupInput = z.infer<typeof followupSchema>;
 export type ProductInput = z.infer<typeof productSchema>;
 export type QuotationInput = z.infer<typeof quotationSchema>;
+export type PurchaseOrderInput = z.infer<typeof purchaseOrderSchema>;
 export type ScriptInput = z.infer<typeof scriptSchema>;
 export type ReminderInput = z.infer<typeof reminderSchema>;
 export type SettingsInput = z.infer<typeof settingsSchema>;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
-import { makeQuotationNo } from "@/lib/utils";
+import { makePurchaseOrderNo } from "@/lib/utils";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -11,22 +11,32 @@ export async function POST(_: Request, contextParams: Context) {
 
   try {
     const { id } = await contextParams.params;
-    const { data: quotation, error } = await context.supabase.from("quotations").select("*").eq("id", id).not("quotation_no", "like", "PO-%").single();
+    const { data: order, error } = await context.supabase
+      .from("quotations")
+      .select("*")
+      .eq("id", id)
+      .like("quotation_no", "PO-%")
+      .single();
     if (error) throw error;
-    const { data: items, error: itemsError } = await context.supabase.from("quotation_items").select("*").eq("quotation_id", id).is("deleted_at", null);
+
+    const { data: items, error: itemsError } = await context.supabase
+      .from("quotation_items")
+      .select("*")
+      .eq("quotation_id", id)
+      .is("deleted_at", null);
     if (itemsError) throw itemsError;
 
     const { data: copy, error: copyError } = await context.supabase
       .from("quotations")
       .insert({
-        quotation_no: makeQuotationNo(),
-        customer_id: quotation.customer_id,
+        quotation_no: makePurchaseOrderNo(),
+        customer_id: order.customer_id,
         created_by: context.profile.id,
         status: "draft",
-        currency: quotation.currency,
-        total_amount: quotation.total_amount,
-        notes: quotation.notes,
-        valid_until: quotation.valid_until
+        currency: order.currency,
+        total_amount: order.total_amount,
+        notes: order.notes,
+        valid_until: order.valid_until
       })
       .select()
       .single();
@@ -46,15 +56,6 @@ export async function POST(_: Request, contextParams: Context) {
       );
       if (itemCopyError) throw itemCopyError;
     }
-
-    const { error: activityError } = await context.supabase.from("activities").insert({
-      actor_id: context.profile.id,
-      customer_id: quotation.customer_id,
-      type: "quotation_created",
-      title: "复制报价",
-      description: `${copy.quotation_no} copied from ${quotation.quotation_no}`
-    });
-    if (activityError) throw activityError;
 
     return NextResponse.json({ data: copy }, { status: 201 });
   } catch (error) {

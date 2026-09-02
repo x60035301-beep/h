@@ -11,7 +11,7 @@ export async function GET() {
   if (isApiError(context)) return context;
 
   try {
-    const { data, error } = await context.supabase.from("quotations").select("*").is("deleted_at", null).order("created_at", { ascending: false });
+    const { data, error } = await context.supabase.from("quotations").select("*").not("quotation_no", "like", "PO-%").is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throw error;
     return NextResponse.json({ data });
   } catch (error) {
