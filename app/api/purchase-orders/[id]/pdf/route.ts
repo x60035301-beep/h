@@ -114,10 +114,10 @@ function renderPurchaseOrder({ order, items, customer, settings }: { order: Orde
       `联系电话 / Telepon: ${customer.whatsapp ?? "-"}`,
       `收货地址 / Alamat Pengiriman: ${meta.deliveryAddress ?? "-"}`
     ], colors);
-    drawInfoBox(doc, left + (width - 18) / 2 + 18, 112, (width - 18) / 2, "采购信息 / Dokumen Pembelian", [
+    drawInfoBox(doc, left + (width - 18) / 2 + 18, 112, (width - 18) / 2, "采购信息 / Informasi Pembelian", [
       `采购单号 / Nomor PO: ${order.quotation_no}`,
       `日期 / Tanggal: ${formatDate(order.created_at, "yyyy-MM-dd")}`,
-      `交货日期 / Tanggal Kirim: ${order.valid_until ?? "-"}`,
+      `交货日期 / Tanggal Pengiriman: ${order.valid_until ?? "-"}`,
       `币种 / Mata Uang: ${currency}`
     ], colors);
 
@@ -159,14 +159,14 @@ function drawItemsTable(doc: PDFKit.PDFDocument, startY: number, left: number, w
   const columns = [
     { title: "货号\nKode Barang", width: 80, align: "left" as const },
     { title: "品名\nNama Barang", width: 90, align: "left" as const },
-    { title: "密度\nDensity", width: 45, align: "center" as const },
-    { title: "尺寸 / 规格\nUkuran / Spec", width: 90, align: "left" as const },
-    { title: "数量\nQty", width: 40, align: "right" as const },
+    { title: "密度\nDensitas", width: 45, align: "center" as const },
+    { title: "尺寸 / 规格\nUkuran / Spesifikasi", width: 90, align: "left" as const },
+    { title: "数量\nJumlah", width: 40, align: "right" as const },
     { title: "总体积\nVolume (m3)", width: 60, align: "right" as const },
-    { title: `单价 / Harga m3\n(${currency})`, width: 85, align: "right" as const },
-    { title: "单片价\nHarga / pcs", width: 75, align: "right" as const },
+    { title: `单价 / Harga per m3\n(${currency})`, width: 85, align: "right" as const },
+    { title: "单片价\nHarga per pcs", width: 75, align: "right" as const },
     { title: `金额 / Total\n(${currency})`, width: 85, align: "right" as const },
-    { title: "备注\nKet.", width: width - 650, align: "left" as const }
+    { title: "备注\nKeterangan", width: width - 650, align: "left" as const }
   ];
   let y = startY;
 
