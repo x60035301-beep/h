@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { getApiContext, handleApiError, isApiError, type ApiContext } from "@/lib/api";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
@@ -55,6 +57,14 @@ type PdfSettings = {
   email: string | null;
   phone: string | null;
 };
+
+const PDF_FONT = "NotoSansSC";
+let cachedPdfFont: Buffer | null = null;
+
+function getPdfFont() {
+  cachedPdfFont ??= readFileSync(join(process.cwd(), "assets", "fonts", "NotoSansCJKsc-Regular.otf"));
+  return cachedPdfFont;
+}
 
 export async function GET(_: Request, contextParams: Context) {
   try {
@@ -169,6 +179,7 @@ function renderQuotationPdf({
 }) {
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 36 });
+    doc.registerFont(PDF_FONT, getPdfFont());
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -202,16 +213,6 @@ function renderQuotationPdf({
     });
 
     y += 14;
-    y = drawDensityTable(doc, {
-      y,
-      left,
-      width: tableWidth,
-      palette,
-      items,
-      currency
-    });
-
-    y += 12;
     y = drawSpecificationTable(doc, {
       y,
       left,
@@ -264,12 +265,12 @@ function drawHeader(
 
   doc
     .fillColor(palette.text)
-    .font("Helvetica-Bold")
+    .font(PDF_FONT)
     .fontSize(18)
     .text(settings.company_name || "HOMY SPONGE FACTORY", left + 88, 34, { width: right - left - 176, align: "center" });
 
   doc
-    .font("Helvetica")
+    .font(PDF_FONT)
     .fontSize(8)
     .fillColor(palette.text)
     .text(settings.address ?? "Surabaya Industrial Area, East Java, Indonesia", left + 88, 58, {
@@ -283,7 +284,7 @@ function drawHeader(
 
   doc.moveTo(left, 96).lineTo(left + 180, 96).strokeColor(palette.text).lineWidth(0.8).stroke();
   doc.moveTo(right - 180, 96).lineTo(right, 96).stroke();
-  doc.fillColor(palette.text).font("Helvetica-Bold").fontSize(15).text("PENAWARAN HARGA BUSA", left, 89, {
+  doc.fillColor(palette.text).font(PDF_FONT).fontSize(14).text("海绵报价单 / PENAWARAN HARGA BUSA", left, 89, {
     width: right - left,
     align: "center"
   });
@@ -309,15 +310,15 @@ function drawInfoSection(
 ) {
   const gap = 18;
   const boxWidth = (width - gap) / 2;
-  drawInfoBox(doc, left, y, boxWidth, "Kepada", [
+  drawInfoBox(doc, left, y, boxWidth, "报价给 / Kepada", [
     customer.company_name,
-    `Contact: ${customer.contact_name ?? "-"}`,
-    `Country: ${customer.country ?? "-"}`
+    `联系人 / Kontak: ${customer.contact_name ?? "-"}`,
+    `国家 / Negara: ${customer.country ?? "-"}`
   ], palette);
-  drawInfoBox(doc, left + boxWidth + gap, y, boxWidth, "Dokumen Penawaran", [
-    `Nomor: ${quotation.quotation_no}`,
-    `Tanggal: ${formatDate(quotation.created_at, "yyyy-MM-dd")}`,
-    `Berlaku Sampai: ${quotation.valid_until ?? "-"}`
+  drawInfoBox(doc, left + boxWidth + gap, y, boxWidth, "报价文件 / Dokumen Penawaran", [
+    `单号 / Nomor: ${quotation.quotation_no}`,
+    `日期 / Tanggal: ${formatDate(quotation.created_at, "yyyy-MM-dd")}`,
+    `有效期 / Berlaku Sampai: ${quotation.valid_until ?? "-"}`
   ], palette);
   return y + 82;
 }
@@ -326,47 +327,14 @@ function drawInfoBox(doc: PDFKit.PDFDocument, x: number, y: number, width: numbe
   const headerHeight = 22;
   const rowHeight = 18;
   doc.rect(x, y, width, headerHeight).fill(palette.lightBlue);
-  doc.fillColor(palette.text).font("Helvetica-Bold").fontSize(9).text(title, x + 8, y + 7, { width: width - 16 });
+  doc.fillColor(palette.text).font(PDF_FONT).fontSize(9).text(title, x + 8, y + 7, { width: width - 16 });
   rows.forEach((row, index) => {
     const rowY = y + headerHeight + index * rowHeight;
     doc.rect(x, rowY, width, rowHeight).fill(index === 0 ? palette.softGray : "#FFFFFF");
-    doc.fillColor(palette.text).font(index === 0 ? "Helvetica-Bold" : "Helvetica").fontSize(index === 0 ? 9 : 8);
+    doc.fillColor(palette.text).font(PDF_FONT).fontSize(index === 0 ? 9 : 8);
     doc.text(truncate(row, 74), x + 8, rowY + 5, { width: width - 16, lineBreak: false });
   });
   doc.rect(x, y, width, headerHeight + rows.length * rowHeight).strokeColor(palette.border).lineWidth(0.5).stroke();
-}
-
-function drawDensityTable(
-  doc: PDFKit.PDFDocument,
-  {
-    y,
-    left,
-    width,
-    palette,
-    items,
-    currency
-  }: {
-    y: number;
-    left: number;
-    width: number;
-    palette: PdfPalette;
-    items: PdfPrintableItem[];
-    currency: string;
-  }
-) {
-  return drawTable(
-    doc,
-    y,
-    "HARGA BERDASARKAN DENSITY",
-    [
-      { header: "NO", width: 38, align: "center", value: (_item, index) => String(index + 1) },
-      { header: "KETERANGAN", width: 236, value: (item) => formatDensityLabel(item.density, item.product_name) },
-      { header: "SATUAN / KUBIK", width: 118, align: "center", value: (item) => formatQuantity(item.quantity) },
-      { header: `HARGA / KUBIK (${currency})`, width: width - 38 - 236 - 118, align: "right", value: (item) => formatMoneyValue(item.unit_price, currency) }
-    ],
-    items,
-    { left, width, palette }
-  );
 }
 
 function drawSpecificationTable(
@@ -392,16 +360,15 @@ function drawSpecificationTable(
   return drawTable(
     doc,
     y,
-    "SPESIFIKASI PENAWARAN",
+    `报价明细 / SPESIFIKASI PENAWARAN (${currency})`,
     [
-      { header: "Kode Barang", width: 70, value: (item, index) => makeItemCode(quotation, item, index) },
-      { header: "Nama Barang", width: 116, value: (item) => item.product_name },
-      { header: "Density", width: 55, align: "center", value: (item) => formatDensityValue(item.density) },
-      { header: "Ukuran / Spec", width: 94, value: (item) => buildSpecificationText(item) },
-      { header: "Qty.", width: 44, align: "right", value: (item) => formatQuantity(item.quantity) },
-      { header: `@Harga (${currency})`, width: 64, align: "right", value: (item) => formatMoneyValue(item.unit_price, currency) },
-      { header: `Total (${currency})`, width: 68, align: "right", value: (item) => formatMoneyValue(item.amount, currency) },
-      { header: "Ket", width: width - 70 - 116 - 55 - 94 - 44 - 64 - 68, value: (item) => buildNoteText(item) }
+      { header: "代码\nKode", width: 74, maxLength: 14, value: (item, index) => makeItemCode(quotation, item, index) },
+      { header: "品名\nNama", width: 110, maxLength: 21, value: (item) => item.product_name },
+      { header: "密度\nDensity", width: 54, maxLength: 7, align: "center", value: (item) => formatDensityValue(item.density) },
+      { header: "尺寸\nUkuran", width: 102, maxLength: 22, value: (item) => buildSpecificationText(item) },
+      { header: "数量\nQty", width: 38, maxLength: 8, align: "right", value: (item) => formatQuantity(item.quantity) },
+      { header: "单价\nHarga", width: 72, maxLength: 14, align: "right", value: (item) => formatMoneyValue(item.unit_price, currency) },
+      { header: "金额\nTotal", width: width - 74 - 110 - 54 - 102 - 38 - 72, maxLength: 14, align: "right", value: (item) => formatMoneyValue(item.amount, currency) }
     ],
     items,
     { left, width, palette, fontSize: 7.5, rowHeight: 26 }
@@ -431,25 +398,29 @@ function drawTable<T>(
   y = ensureSpace(doc, y, 60 + Math.min(rows.length, 5) * rowHeight, palette);
 
   const drawTableHeader = () => {
+    const columnHeaderHeight = 30;
     doc.rect(left, y, width, 24).fill(palette.navy);
-    doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(10).text(title, left, y + 7, { width, align: "center" });
+    doc.fillColor("#FFFFFF").font(PDF_FONT).fontSize(10).text(title, left, y + 7, { width, align: "center" });
     y += 24;
 
     let x = left;
-    doc.rect(left, y, width, 23).fill(palette.blue);
+    doc.rect(left, y, width, columnHeaderHeight).fill(palette.blue);
     columns.forEach((column) => {
+      doc.save().rect(x, y, column.width, columnHeaderHeight).clip();
       doc
         .fillColor("#FFFFFF")
-        .font("Helvetica-Bold")
+        .font(PDF_FONT)
         .fontSize(fontSize)
-        .text(column.header, x + 5, y + 7, {
-          width: column.width - 10,
-          align: column.align ?? "left",
-          lineBreak: false
+        .text(column.header, x + 4, y + 4, {
+          width: column.width - 8,
+          height: columnHeaderHeight - 8,
+          align: "center",
+          lineBreak: true
         });
+      doc.restore();
       x += column.width;
     });
-    y += 23;
+    y += columnHeaderHeight;
   };
 
   drawTableHeader();
@@ -468,15 +439,19 @@ function drawTable<T>(
     let x = left;
     columns.forEach((column) => {
       const value = row === null ? "-" : column.value(row, rowIndex);
+      doc.save().rect(x, y, column.width, rowHeight).clip();
       doc
         .fillColor(palette.text)
-        .font("Helvetica")
+        .font(PDF_FONT)
         .fontSize(fontSize)
-        .text(truncate(value, column.width > 100 ? 34 : 18), x + 5, y + 8, {
+        .text(truncate(value, column.maxLength ?? (column.width > 100 ? 24 : 14)), x + 5, y + 8, {
           width: column.width - 10,
           align: column.align ?? "left",
-          lineBreak: false
+          lineBreak: false,
+          height: rowHeight - 10,
+          ellipsis: true
         });
+      doc.restore();
       doc.moveTo(x, y).lineTo(x, y + rowHeight).strokeColor(palette.border).lineWidth(0.25).stroke();
       x += column.width;
     });
@@ -509,26 +484,32 @@ function drawSummaryAndNotes(
 ) {
   y = ensureSpace(doc, y, 112, palette);
   const noteWidth = 260;
-  doc.fillColor(palette.text).font("Helvetica-Bold").fontSize(9).text("Keterangan", left, y);
+  doc.fillColor(palette.text).font(PDF_FONT).fontSize(9).text("备注 / Keterangan", left, y);
   doc
-    .font("Helvetica")
+    .font(PDF_FONT)
     .fontSize(8)
     .fillColor(palette.text)
-    .text(quotation.notes || "Harga berlaku sesuai masa berlaku penawaran. Pengiriman dan pembayaran mengikuti kesepakatan kedua pihak.", left, y + 18, {
+    .text(
+      quotation.notes ||
+        "价格在报价有效期内有效，交付与付款条件以双方约定为准。 / Harga berlaku selama masa penawaran. Pengiriman dan pembayaran mengikuti kesepakatan kedua pihak.",
+      left,
+      y + 18,
+      {
       width: noteWidth,
       height: 54
-    });
+      }
+    );
   doc.moveTo(left, y + 76).lineTo(left + noteWidth, y + 76).dash(1, { space: 2 }).strokeColor(palette.text).stroke().undash();
 
   const totalsX = right - 188;
   const labelWidth = 96;
   const valueWidth = 92;
   const rows = [
-    ["Sub Total", subtotal],
-    ["Diskon", 0],
-    ["PPN (0%)", 0],
-    ["Biaya Lain-lain", 0],
-    ["Total", quotation.total_amount]
+    ["小计 / Subtotal", subtotal],
+    ["折扣 / Diskon", 0],
+    ["税 / PPN (0%)", 0],
+    ["其他 / Biaya lain", 0],
+    ["总计 / Total", quotation.total_amount]
   ];
 
   rows.forEach(([label, value], index) => {
@@ -538,7 +519,7 @@ function drawSummaryAndNotes(
     doc.rect(totalsX + labelWidth, rowY, valueWidth, 18).fill(isTotal ? palette.navy : palette.softGray);
     doc
       .fillColor(isTotal ? "#FFFFFF" : palette.text)
-      .font(isTotal ? "Helvetica-Bold" : "Helvetica")
+      .font(PDF_FONT)
       .fontSize(8)
       .text(String(label), totalsX + 6, rowY + 5, { width: labelWidth - 12 });
     doc.text(formatMoneyValue(Number(value), currency), totalsX + labelWidth + 6, rowY + 5, {
@@ -564,8 +545,8 @@ function drawSignature(
     palette: PdfPalette;
   }
 ) {
-  doc.fillColor(palette.text).font("Helvetica").fontSize(8).text("Bagian Penjualan", left + 8, y, { width: 160, align: "center" });
-  doc.text("Disetujui Oleh,", right - 168, y, { width: 160, align: "center" });
+  doc.fillColor(palette.text).font(PDF_FONT).fontSize(8).text("销售部 / Bagian Penjualan", left + 8, y, { width: 160, align: "center" });
+  doc.text("批准 / Disetujui Oleh", right - 168, y, { width: 160, align: "center" });
   doc.moveTo(left + 24, y + 58).lineTo(left + 144, y + 58).strokeColor(palette.border).lineWidth(0.6).stroke();
   doc.moveTo(right - 144, y + 58).lineTo(right - 24, y + 58).stroke();
 }
@@ -583,11 +564,6 @@ function drawPageAccent(doc: PDFKit.PDFDocument, palette: PdfPalette) {
   doc.moveTo(left, 30).lineTo(right, 30).strokeColor(palette.navy).lineWidth(1).stroke();
 }
 
-function formatDensityLabel(density: string | null, fallback: string) {
-  const value = formatDensityValue(density);
-  return value === "-" ? fallback : `${value}-DCT`;
-}
-
 function formatDensityValue(density: string | null) {
   if (!density) return "-";
   const trimmed = density.trim();
@@ -603,12 +579,6 @@ function buildSpecificationText(item: PdfPrintableItem) {
   if (density !== "-" && size) return `D.${density} UK ${size.toUpperCase()}`;
   if (size && specification) return `${size} / ${specification}`;
   return size ?? specification ?? "-";
-}
-
-function buildNoteText(item: PdfPrintableItem) {
-  if (item.display_note) return item.display_note;
-  const quantity = Number(item.quantity ?? 0);
-  return quantity > 0 ? `${formatQuantity(quantity)} kubik` : "-";
 }
 
 function makeItemCode(quotation: PdfQuotation, item: PdfPrintableItem, index: number) {
@@ -654,6 +624,7 @@ type PdfPalette = {
 type PdfTableColumn<T> = {
   header: string;
   width: number;
+  maxLength?: number;
   align?: "left" | "center" | "right";
   value: (row: T, index: number) => string;
 };
