@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
 import { parsePurchaseOrderNotes } from "@/lib/purchase-order-meta";
+import { getPurchaseOrderUnitPrice } from "@/lib/purchase-order-pricing";
 import { getPurchaseOrderSupplier } from "@/lib/purchase-order-supplier";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
@@ -108,6 +109,13 @@ function renderPurchaseOrder({ order, items, customer, settings }: { order: Orde
     const meta = parsePurchaseOrderNotes(order.notes);
     const currency = order.currency.toUpperCase();
     const supplier = getPurchaseOrderSupplier(settings.metadata);
+    const pricedItems = items.map((item) => {
+      const itemMeta = parseQuotationItemNotes(item.notes);
+      const unitPrice = getPurchaseOrderUnitPrice(itemMeta.density, item.unit_price);
+      const amount = calculateFoamLineAmount({ unitPrice, size: itemMeta.size, quantity: item.quantity })?.amount ?? item.amount;
+      return { ...item, unit_price: unitPrice, amount };
+    });
+    const totalAmount = pricedItems.reduce((sum, item) => sum + Number(item.amount ?? 0), 0) || order.total_amount;
 
     drawHeader(doc, left, right, settings.company_name, colors);
     drawInfoBox(doc, left, 112, (width - 18) / 2, "供应商 / Pemasok", [
@@ -121,9 +129,9 @@ function renderPurchaseOrder({ order, items, customer, settings }: { order: Orde
       `币种 / Mata Uang: ${currency}`
     ], colors);
 
-    let y = drawItemsTable(doc, 208, left, width, order, items, currency, colors);
+    let y = drawItemsTable(doc, 208, left, width, order, pricedItems, currency, colors);
     y = ensureSpace(doc, y + 12, 140, colors);
-    drawFooter(doc, y, left, right, order, meta.note, meta.paymentTerms, currency, colors);
+    drawFooter(doc, y, left, right, totalAmount, meta.note, meta.paymentTerms, currency, colors);
     doc.end();
   });
 }
@@ -237,7 +245,7 @@ function drawFooter(
   y: number,
   left: number,
   right: number,
-  order: Order,
+  totalAmount: number,
   note: string | null,
   paymentTerms: string | null,
   currency: string,
@@ -249,7 +257,7 @@ function drawFooter(
   doc.font(PDF_FONT).fontSize(9).text("付款方式 / Cara Pembayaran", left, y + 52);
   doc.font(PDF_FONT).fontSize(8).text(paymentTerms || "-", left, y + 69, { width: totalsX - left - 20, height: 30 });
 
-  const totals = [["小计 / Sub Total", order.total_amount], ["折扣 / Diskon", 0], ["税额 / PPN (0%)", 0], ["其他费用 / Biaya Lain-lain", 0], ["合计 / Total", order.total_amount]] as const;
+  const totals = [["小计 / Sub Total", totalAmount], ["折扣 / Diskon", 0], ["税额 / PPN (0%)", 0], ["其他费用 / Biaya Lain-lain", 0], ["合计 / Total", totalAmount]] as const;
   totals.forEach(([label, value], index) => {
     const rowY = y + index * 18;
     const total = index === totals.length - 1;

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
 import { serializePurchaseOrderNotes } from "@/lib/purchase-order-meta";
+import { getPurchaseOrderUnitPrice } from "@/lib/purchase-order-pricing";
+import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
+import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
 import { makePurchaseOrderNo } from "@/lib/utils";
 
 type Context = { params: Promise<{ id: string }> };
@@ -31,6 +34,14 @@ export async function POST(_: Request, contextParams: Context) {
     if (itemsError) throw itemsError;
     if (!items?.length) return NextResponse.json({ error: "Quotation has no items." }, { status: 400 });
 
+    const pricedItems = items.map((item) => {
+      const meta = parseQuotationItemNotes(item.notes);
+      const unitPrice = getPurchaseOrderUnitPrice(meta.density, item.unit_price);
+      const amount = calculateFoamLineAmount({ unitPrice, size: meta.size, quantity: item.quantity })?.amount ?? 0;
+      return { ...item, unit_price: unitPrice, amount };
+    });
+    const total = pricedItems.reduce((sum, item) => sum + item.amount, 0);
+
     const { data: order, error: orderError } = await context.supabase
       .from("quotations")
       .insert({
@@ -39,7 +50,7 @@ export async function POST(_: Request, contextParams: Context) {
         created_by: context.profile.id,
         status: "draft",
         currency: quotation.currency,
-        total_amount: quotation.total_amount,
+        total_amount: total,
         notes: serializePurchaseOrderNotes({ note: quotation.notes }),
         valid_until: quotation.valid_until
       })
@@ -48,7 +59,7 @@ export async function POST(_: Request, contextParams: Context) {
     if (orderError) throw orderError;
 
     const { error: itemInsertError } = await context.supabase.from("quotation_items").insert(
-      items.map((item) => ({ ...item, quotation_id: order.id }))
+      pricedItems.map((item) => ({ ...item, quotation_id: order.id }))
     );
     if (itemInsertError) throw itemInsertError;
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
 import { serializePurchaseOrderNotes } from "@/lib/purchase-order-meta";
+import { getPurchaseOrderUnitPrice } from "@/lib/purchase-order-pricing";
 import { serializeQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
 import { makePurchaseOrderNo } from "@/lib/utils";
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
         product_id: item.product_id,
         product_name: item.product_name,
         quantity: item.quantity,
-        unit_price: item.unit_price,
+        unit_price: getPurchaseOrderUnitPrice(item.density, item.unit_price),
         amount: getLineAmount(item),
         notes: serializeQuotationItemNotes({
           density: item.density,
@@ -69,6 +70,10 @@ export async function POST(request: Request) {
   }
 }
 
-function getLineAmount(item: { unit_price: number; size?: string | null; quantity: number }) {
-  return calculateFoamLineAmount({ unitPrice: item.unit_price, size: item.size, quantity: item.quantity })?.amount ?? 0;
+function getLineAmount(item: { unit_price: number; density?: string | null; size?: string | null; quantity: number }) {
+  return calculateFoamLineAmount({
+    unitPrice: getPurchaseOrderUnitPrice(item.density, item.unit_price),
+    size: item.size,
+    quantity: item.quantity
+  })?.amount ?? 0;
 }

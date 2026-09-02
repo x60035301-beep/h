@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { currencies, getCurrencyName } from "@/lib/currencies";
 import { getDictionary } from "@/lib/dictionaries";
 import { parsePurchaseOrderNotes } from "@/lib/purchase-order-meta";
+import { getPurchaseOrderDensityPrice } from "@/lib/purchase-order-pricing";
 import { parseQuotationItemNotes } from "@/lib/quotation-item-meta";
 import { calculateFoamLineAmount } from "@/lib/quotation-pricing";
 import { formatCurrency } from "@/lib/utils";
@@ -103,8 +104,21 @@ export function PurchaseOrderForm({
   const watchedItems = form.watch("items");
   const currency = form.watch("currency");
   const total = watchedItems.reduce((sum, item) => sum + (calculate(item)?.amount ?? 0), 0);
+  const densityValues = watchedItems.map((item) => item.density ?? "").join("|");
 
   useEffect(() => form.reset(defaults), [defaults, form]);
+
+  useEffect(() => {
+    watchedItems.forEach((item, index) => {
+      const price = getPurchaseOrderDensityPrice(item.density);
+      if (price === null) return;
+
+      const currentPrice = Number(form.getValues(`items.${index}.unit_price`) || 0);
+      if (currentPrice !== price) {
+        form.setValue(`items.${index}.unit_price`, price, { shouldDirty: isEdit, shouldValidate: true });
+      }
+    });
+  }, [densityValues, form, isEdit, watchedItems]);
 
   async function submit(values: PurchaseOrderInput) {
     let documentWindow: Window | null = null;
