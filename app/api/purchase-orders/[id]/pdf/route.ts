@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { getApiContext, handleApiError, isApiError } from "@/lib/api";
 import { parsePurchaseOrderNotes } from "@/lib/purchase-order-meta";
@@ -32,6 +34,14 @@ type Customer = {
   whatsapp: string | null;
 };
 type Settings = { company_name: string };
+
+const PDF_FONT = "NotoSansSC";
+let cachedPdfFont: Buffer | null = null;
+
+function getPdfFont() {
+  cachedPdfFont ??= readFileSync(join(process.cwd(), "assets", "fonts", "NotoSansCJKsc-Regular.otf"));
+  return cachedPdfFont;
+}
 
 export async function GET(_: Request, contextParams: Context) {
   try {
@@ -84,6 +94,7 @@ export async function GET(_: Request, contextParams: Context) {
 function renderPurchaseOrder({ order, items, customer, settings }: { order: Order; items: Item[]; customer: Customer; settings: Settings }) {
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 36 });
+    doc.registerFont(PDF_FONT, getPdfFont());
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -97,17 +108,17 @@ function renderPurchaseOrder({ order, items, customer, settings }: { order: Orde
     const currency = order.currency.toUpperCase();
 
     drawHeader(doc, left, right, settings.company_name, colors);
-    drawInfoBox(doc, left, 112, (width - 18) / 2, "Pemasok", [
+    drawInfoBox(doc, left, 112, (width - 18) / 2, "供应商 / Pemasok", [
       customer.company_name,
-      `Kontak: ${customer.contact_name ?? "-"}`,
-      `Telepon: ${customer.whatsapp ?? "-"}`,
-      `Alamat Pengiriman: ${meta.deliveryAddress ?? "-"}`
+      `联系人 / Kontak: ${customer.contact_name ?? "-"}`,
+      `联系电话 / Telepon: ${customer.whatsapp ?? "-"}`,
+      `收货地址 / Alamat Pengiriman: ${meta.deliveryAddress ?? "-"}`
     ], colors);
-    drawInfoBox(doc, left + (width - 18) / 2 + 18, 112, (width - 18) / 2, "Dokumen Pembelian", [
-      `Nomor PO: ${order.quotation_no}`,
-      `Tanggal: ${formatDate(order.created_at, "yyyy-MM-dd")}`,
-      `Tanggal Kirim: ${order.valid_until ?? "-"}`,
-      `Mata Uang: ${currency}`
+    drawInfoBox(doc, left + (width - 18) / 2 + 18, 112, (width - 18) / 2, "采购信息 / Dokumen Pembelian", [
+      `采购单号 / Nomor PO: ${order.quotation_no}`,
+      `日期 / Tanggal: ${formatDate(order.created_at, "yyyy-MM-dd")}`,
+      `交货日期 / Tanggal Kirim: ${order.valid_until ?? "-"}`,
+      `币种 / Mata Uang: ${currency}`
     ], colors);
 
     let y = drawItemsTable(doc, 208, left, width, order, items, currency, colors);
@@ -121,22 +132,22 @@ function drawHeader(doc: PDFKit.PDFDocument, left: number, right: number, compan
   doc.rect(left, 34, 72, 52).fill(colors.navy);
   doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(17).text("HOMY", left, 48, { width: 72, align: "center" });
   doc.font("Helvetica").fontSize(6).text("SPONGE FACTORY", left, 68, { width: 72, align: "center" });
-  doc.fillColor(colors.text).font("Helvetica-Bold").fontSize(22).text(companyName || "HOMY Sponge Factory", left + 100, 48, {
+  doc.fillColor(colors.text).font(PDF_FONT).fontSize(22).text(companyName || "HOMY Sponge Factory", left + 100, 48, {
     width: right - left - 200,
     align: "center"
   });
   doc.moveTo(left, 98).lineTo(left + 245, 98).strokeColor(colors.navy).lineWidth(1).stroke();
   doc.moveTo(right - 245, 98).lineTo(right, 98).stroke();
-  doc.fillColor(colors.text).font("Helvetica-Bold").fontSize(18).text("PESANAN PEMBELIAN", left, 90, { width: right - left, align: "center" });
+  doc.fillColor(colors.text).font(PDF_FONT).fontSize(18).text("采购单 / PESANAN PEMBELIAN", left, 90, { width: right - left, align: "center" });
 }
 
 function drawInfoBox(doc: PDFKit.PDFDocument, x: number, y: number, width: number, title: string, rows: string[], colors: Colors) {
   doc.rect(x, y, width, 22).fill(colors.light);
-  doc.fillColor(colors.text).font("Helvetica-Bold").fontSize(9).text(title, x + 8, y + 7, { width: width - 16 });
+  doc.fillColor(colors.text).font(PDF_FONT).fontSize(9).text(title, x + 8, y + 7, { width: width - 16 });
   rows.forEach((row, index) => {
     const rowY = y + 22 + index * 17;
     doc.rect(x, rowY, width, 17).fill(index === 0 ? colors.gray : "#FFFFFF");
-    doc.fillColor(colors.text).font(index === 0 ? "Helvetica-Bold" : "Helvetica").fontSize(8).text(shorten(row, 90), x + 8, rowY + 5, {
+    doc.fillColor(colors.text).font(PDF_FONT).fontSize(8).text(shorten(row, 90), x + 8, rowY + 5, {
       width: width - 16,
       lineBreak: false
     });
@@ -146,30 +157,30 @@ function drawInfoBox(doc: PDFKit.PDFDocument, x: number, y: number, width: numbe
 
 function drawItemsTable(doc: PDFKit.PDFDocument, startY: number, left: number, width: number, order: Order, items: Item[], currency: string, colors: Colors) {
   const columns = [
-    { title: "Kode Barang", width: 80, align: "left" as const },
-    { title: "Nama Barang", width: 90, align: "left" as const },
-    { title: "Density", width: 45, align: "center" as const },
-    { title: "Ukuran / Spec", width: 90, align: "left" as const },
-    { title: "Qty", width: 40, align: "right" as const },
-    { title: "Volume (m3)", width: 60, align: "right" as const },
-    { title: `Harga / m3 (${currency})`, width: 85, align: "right" as const },
-    { title: "Harga / pcs", width: 75, align: "right" as const },
-    { title: `Total (${currency})`, width: 85, align: "right" as const },
-    { title: "Ket.", width: width - 650, align: "left" as const }
+    { title: "货号\nKode Barang", width: 80, align: "left" as const },
+    { title: "品名\nNama Barang", width: 90, align: "left" as const },
+    { title: "密度\nDensity", width: 45, align: "center" as const },
+    { title: "尺寸 / 规格\nUkuran / Spec", width: 90, align: "left" as const },
+    { title: "数量\nQty", width: 40, align: "right" as const },
+    { title: "总体积\nVolume (m3)", width: 60, align: "right" as const },
+    { title: `单价 / Harga m3\n(${currency})`, width: 85, align: "right" as const },
+    { title: "单片价\nHarga / pcs", width: 75, align: "right" as const },
+    { title: `金额 / Total\n(${currency})`, width: 85, align: "right" as const },
+    { title: "备注\nKet.", width: width - 650, align: "left" as const }
   ];
   let y = startY;
 
   const drawHeading = () => {
     doc.rect(left, y, width, 24).fill(colors.navy);
-    doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(10).text("DETAIL PESANAN", left, y + 7, { width, align: "center" });
+    doc.fillColor("#FFFFFF").font(PDF_FONT).fontSize(10).text("采购明细 / DETAIL PESANAN", left, y + 7, { width, align: "center" });
     y += 24;
     let x = left;
     doc.rect(left, y, width, 34).fill(colors.blue);
     columns.forEach((column) => {
-      doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(6.5).text(column.title, x + 4, y + 12, {
+      doc.fillColor("#FFFFFF").font(PDF_FONT).fontSize(6.5).text(column.title, x + 4, y + 5, {
         width: column.width - 8,
         align: "center",
-        lineBreak: false
+        height: 26
       });
       x += column.width;
     });
@@ -189,7 +200,7 @@ function drawItemsTable(doc: PDFKit.PDFDocument, startY: number, left: number, w
     let x = left;
     columns.forEach((column, columnIndex) => {
       doc.save().rect(x, y, column.width, 26).clip();
-      doc.fillColor(colors.text).font("Helvetica").fontSize(7).text(shorten(row[columnIndex], column.width > 100 ? 30 : column.width >= 90 ? 22 : 15), x + 4, y + 9, {
+      doc.fillColor(colors.text).font(PDF_FONT).fontSize(7).text(shorten(row[columnIndex], column.width > 100 ? 30 : column.width >= 90 ? 22 : 15), x + 4, y + 9, {
         width: column.width - 8,
         align: column.align,
         lineBreak: false
@@ -233,29 +244,29 @@ function drawFooter(
   colors: Colors
 ) {
   const totalsX = right - 230;
-  doc.fillColor(colors.text).font("Helvetica-Bold").fontSize(9).text("Catatan", left, y);
-  doc.font("Helvetica").fontSize(8).text(note || "-", left, y + 17, { width: totalsX - left - 20, height: 30 });
-  doc.font("Helvetica-Bold").fontSize(9).text("Cara Pembayaran", left, y + 52);
-  doc.font("Helvetica").fontSize(8).text(paymentTerms || "-", left, y + 69, { width: totalsX - left - 20, height: 30 });
+  doc.fillColor(colors.text).font(PDF_FONT).fontSize(9).text("备注 / Catatan", left, y);
+  doc.font(PDF_FONT).fontSize(8).text(note || "-", left, y + 17, { width: totalsX - left - 20, height: 30 });
+  doc.font(PDF_FONT).fontSize(9).text("付款方式 / Cara Pembayaran", left, y + 52);
+  doc.font(PDF_FONT).fontSize(8).text(paymentTerms || "-", left, y + 69, { width: totalsX - left - 20, height: 30 });
 
-  const totals = [["Sub Total", order.total_amount], ["Diskon", 0], ["PPN (0%)", 0], ["Biaya Lain-lain", 0], ["Total", order.total_amount]] as const;
+  const totals = [["小计 / Sub Total", order.total_amount], ["折扣 / Diskon", 0], ["税额 / PPN (0%)", 0], ["其他费用 / Biaya Lain-lain", 0], ["合计 / Total", order.total_amount]] as const;
   totals.forEach(([label, value], index) => {
     const rowY = y + index * 18;
     const total = index === totals.length - 1;
     doc.rect(totalsX, rowY, 115, 18).fill(total ? colors.navy : colors.gray);
     doc.rect(totalsX + 115, rowY, 115, 18).fill(total ? colors.navy : colors.gray);
-    doc.fillColor(total ? "#FFFFFF" : colors.text).font(total ? "Helvetica-Bold" : "Helvetica").fontSize(8);
+    doc.fillColor(total ? "#FFFFFF" : colors.text).font(PDF_FONT).fontSize(8);
     doc.text(label, totalsX + 6, rowY + 5, { width: 103 });
     doc.text(formatMoney(value, currency), totalsX + 121, rowY + 5, { width: 103, align: "right" });
   });
 
   const signatureY = y + 100;
   const signatureWidth = (right - left) / 3;
-  ["Bagian Pembelian", "Diperiksa Oleh", "Disetujui Oleh"].forEach((label, index) => {
+  ["采购部 / Bagian Pembelian", "审核 / Diperiksa Oleh", "批准 / Disetujui Oleh"].forEach((label, index) => {
     const x = left + signatureWidth * index;
-    doc.font("Helvetica").fontSize(8).fillColor(colors.text).text(label, x, signatureY, { width: signatureWidth, align: "center", lineBreak: false });
+    doc.font(PDF_FONT).fontSize(8).fillColor(colors.text).text(label, x, signatureY, { width: signatureWidth, align: "center", lineBreak: false });
     doc.moveTo(x + 42, signatureY + 30).lineTo(x + signatureWidth - 42, signatureY + 30).strokeColor(colors.border).stroke();
-    doc.text("Tanggal:", x + 42, signatureY + 35, { width: signatureWidth - 84, lineBreak: false });
+    doc.text("日期 / Tanggal:", x + 42, signatureY + 35, { width: signatureWidth - 84, lineBreak: false });
   });
 }
 
